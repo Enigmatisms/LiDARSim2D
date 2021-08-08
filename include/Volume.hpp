@@ -20,6 +20,8 @@ public:
 
     void prettier(cv::Mat& src, const Eigen::Vector2d& obs) const;
 
+    void getValidEdges(std::vector<Edge>& edges);
+
     void reset() {
         while (heap.empty() == false) heap.pop();
         objs.clear();

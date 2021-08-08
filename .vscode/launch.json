@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) volume",
+            "name": "(gdb) filter",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/main",
-            "args": ["test"],
+            "program": "${workspaceFolder}/build/filter",
+            "args": ["test", "5"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

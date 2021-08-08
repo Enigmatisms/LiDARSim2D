@@ -1,3 +1,4 @@
+#include <Eigen/Dense>
 #include "Edge.hpp"
 #include "LOG.hpp"
 
@@ -67,4 +68,43 @@ int Edge::binarySearch(std::pair<int, int> range, double angle) const{
         mid_angle = at(m).z();
     } 
     return std::max(range_min, s);
+}
+
+Eigen::Vector3d getIntersection(
+    const Eigen::Vector2d& vec,
+    const Eigen::Vector3d& _p1,
+    const Eigen::Vector3d& _p2, 
+    const Eigen::Vector2d& obs
+) {
+    const Eigen::Vector2d p1 = _p1.block<2, 1>(0, 0), p2 = _p2.block<2, 1>(0, 0);
+    const Eigen::Vector2d vec_line = p2 - p1;
+    Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
+    A << -vec(1), vec(0), -vec_line(1), vec_line(0);
+    double b1 = Eigen::RowVector2d(-vec(1), vec(0)) * obs;
+    double b2 = Eigen::RowVector2d(-vec_line(1), vec_line(0)) * p1;
+    const Eigen::Vector2d b(b1, b2);
+    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+    if (std::abs(det) < 1e-5)
+        return _p1;
+    const Eigen::Vector2d pt = A.inverse() * b, new_vec = pt - obs;
+    double angle = atan2(new_vec(1), new_vec(0));
+    Eigen::Vector3d result;
+    result << pt, angle;
+    return result;                   // 解交点
+}
+
+Eigen::Vector2d Edge::getRayIntersect(const Eigen::Vector3d& ray, const Eigen::Vector2d& obs) const {
+    int id = rotatedBinarySearch(ray.z());
+    if (id < 0) throw "Something went wrong with id < 0, which should not happen at all.\n";
+    const Eigen::Vector2d p1 = at(id - 1).block<2, 1>(0, 0), p2 = at(id).block<2, 1>(0, 0);
+    const Eigen::Vector2d vec_line = p2 - p1, vec = ray.block<2, 1>(0, 0);
+    Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
+    A << -vec(1), vec(0), -vec_line(1), vec_line(0);
+    double b1 = Eigen::RowVector2d(-vec(1), vec(0)) * obs;
+    double b2 = Eigen::RowVector2d(-vec_line(1), vec_line(0)) * p1;
+    const Eigen::Vector2d b(b1, b2);
+    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+    if (std::abs(det) < 1e-5)
+        return p1;
+    return A.inverse() * b - obs;
 }

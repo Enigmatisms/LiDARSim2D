@@ -50,3 +50,12 @@ target_link_libraries(main
   ${OpenCV_LIBS}
   pthread
 )
+
+add_executable(filter filter.cc
+  ${SRC}
+)
+
+target_link_libraries(filter
+  ${OpenCV_LIBS}
+  pthread
+)

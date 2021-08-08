@@ -16,7 +16,6 @@ void Volume::visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Ei
         obj.makePolygons4Render(obs, polygons);
     cv::drawContours(dst, polygons, -1, cv::Scalar(254, 254, 254), -1);
     cv::drawContours(dst, _obstcs, -1, cv::Scalar(10, 10, 10), -1);
-    prettier(dst, obs);
     cv::circle(dst, cv::Point(obs.x(), obs.y()), 4, cv::Scalar(0, 255, 255), -1);
     cv::circle(dst, cv::Point(obs.x(), obs.y()), 7, cv::Scalar(40, 40, 40), 2);
 }
@@ -99,11 +98,18 @@ void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, cv::Poin
 void Volume::simplePreVisualize(cv::Mat& src, const cv::Point& obs) const {
     for (const Object& obj: objs) {
         obj.visualizeEdges(src, obs);
-        char str[8];
-        snprintf(str, 8, "%d", obj.id);
-		cv::putText(src, str, cv::Point(obj.edges.front().back().x(), obj.edges.front().back().y()) + cv::Point(10, 10),
-				cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 255));
     }
-    cv::imshow("tmp", src);
-    cv::waitKey(0);
+    // cv::imshow("tmp", src);
+    // cv::waitKey(0);
 }
+
+void Volume::getValidEdges(std::vector<Edge>& edges) {
+    for (const Object& obj: objs) {
+        if (obj.valid == false) continue;
+        for (const Edge& eg: obj.edges) {
+            if (eg.valid == false) continue;
+            edges.push_back(eg);
+        }
+    }
+}
+

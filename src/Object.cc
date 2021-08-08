@@ -46,7 +46,6 @@ void Object::externalProjector(Edge& src, const Eigen::Vector2d& obs) {
         Edge& this_edge = edges[top];
         heap.pop();
         if (this_edge.valid == false) continue;
-        int fx = this_edge.front().x(), fy = this_edge.front().y(), bx = this_edge.back().x(), by = this_edge.back().y();
         projectEdge2Edge(src, obs, this_edge, heap);
     }
     bool valid_flag = false;
@@ -320,12 +319,6 @@ void Object::visualizeEdges(cv::Mat& src, cv::Point obs) const{
         for (size_t i = 1; i < eg.size(); i++) {
             cv::line(src, cv::Point(eg[i - 1].x(), eg[i - 1].y()), cv::Point(eg[i].x(), eg[i].y()), cv::Scalar(0, 255, 255), 3);
         }
-        char str[8];
-        snprintf(str, 8, "%d:%lu", cnt, eg.size());
-		cv::putText(src, str, cv::Point(eg.front().x(), eg.front().y()) + cv::Point(10, 10),
-					cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
-        cv::circle(src, cv::Point(eg.front().x(), eg.front().y()), 3, cv::Scalar(255, 255, 0), -1);
-        cv::circle(src, cv::Point(eg.back().x(), eg.back().y()), 3, cv::Scalar(255, 0, 255), -1);
     }
     cv::circle(src, obs, 4, cv::Scalar(0, 255, 0), -1);
 }

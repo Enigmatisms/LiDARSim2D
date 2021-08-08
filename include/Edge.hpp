@@ -41,6 +41,8 @@ public:
     void initWithObs(Eigen::Vector2d obs, int second_id);            // 根据观测点，初始化角度以及ids
     
     int rotatedBinarySearch(double angle) const;            // binary search acceleration
+
+    Eigen::Vector2d getRayIntersect(const Eigen::Vector3d& ray, const Eigen::Vector2d& obs) const;
 private:
     int binarySearch(std::pair<int, int> range, double angle) const;
 };
