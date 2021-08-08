@@ -65,8 +65,9 @@ int main(int argc, char** argv) {
     // std::string outPath = "/home/sentinel/cv_output.avi";
     // cv::Size sWH = cv::Size(1200, 900);
 	// cv::VideoWriter outputVideo;
-	// outputVideo.open(outPath, 1482049860, 30.0, sWH);	    // DIVX
+	// outputVideo.open(outPath, 1482049860, 1.5, sWH);	    // DIVX
     printf("Main started.\n");
+    int img_cnt = 0;
     while (true) {
         cv::imshow("disp", src);
         char key = cv::waitKey(1);
@@ -82,6 +83,8 @@ int main(int argc, char** argv) {
             time_sum += end_t - start_t;
             time_cnt += 1.0;
             render_flag = false;
+            // std::string name = "../asset/img" + std::to_string(img_cnt++) + ".png";
+            // cv::imwrite(name.c_str(), src);
         }
         switch(key) {
             case 'w': {

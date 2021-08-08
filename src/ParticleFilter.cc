@@ -31,7 +31,6 @@ void ParticleFilter::particleUpdate(double mx, double my) {
     }
 }
 
-
 void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector2d act_obs, cv::Mat& src) {
     cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, floors, cv::Scalar(40, 40, 40), -1);
@@ -145,8 +144,7 @@ void ParticleFilter::visualizeRay(const std::vector<double>& range, const Eigen:
         cv::Point ray_end(ray.x(), ray.y());
         cv::line(dst, cv_obs, ray_end, cv::Scalar(0, 0, 255), 2);
     }
-    cv::imshow("ray", dst);
-    cv::waitKey(0);
+    cv::imwrite("../asset/ray.png", dst);
 }
 
 void ParticleFilter::visualizeParticles(const std::vector<double>& weights, cv::Mat& dst) const {
