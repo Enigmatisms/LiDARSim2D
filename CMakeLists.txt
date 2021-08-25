@@ -59,3 +59,13 @@ target_link_libraries(filter
   ${OpenCV_LIBS}
   pthread
 )
+
+
+add_executable(scan scan_sim.cc
+  ${SRC}
+)
+
+target_link_libraries(scan
+  ${OpenCV_LIBS}
+  pthread
+)
