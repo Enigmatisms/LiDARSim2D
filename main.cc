@@ -5,14 +5,14 @@
 #include "mapEdit.h"
 
 cv::Mat src;
-cv::Point obs;
+Eigen::Vector2d obs;
 bool obs_set = false;
 
 void on_mouse(int event, int x,int y, int flags, void *ustc) {
     if (event == cv::EVENT_LBUTTONDOWN && obs_set == false) {
         printf("cv::Point(%d, %d),\n", x, y);
-        obs.x = x;
-        obs.y = y;
+        obs(0) = x;
+        obs(1) = y;
         cv::circle(src, cv::Point(x, y), 3, cv::Scalar(0, 255, 0), -1);
         obs_set = true;
     }
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
     cv::setMouseCallback("disp", on_mouse, NULL);
     Volume vol;
-    obs = cv::Point(367, 769);
+    obs = Eigen::Vector2d(367, 769);
     int speed = 3;
     if (argc > 2) 
         speed = atoi(argv[2]);
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     double start_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
     vol.calculateVisualSpace(obstacles, obs, src);
     double end_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
-    vol.visualizeVisualSpace(obstacles, Eigen::Vector2d(obs.x, obs.y), src);
+    vol.visualizeVisualSpace(obstacles, Eigen::Vector2d(obs(0), obs(1)), src);
     time_sum += end_t - start_t;
     // cv::imwrite("../asset/thumbnail2.png", src);
     // std::string outPath = "/home/sentinel/cv_output.avi";
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
             start_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
             vol.calculateVisualSpace(obstacles, obs, src);
             end_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
-            vol.visualizeVisualSpace(obstacles, Eigen::Vector2d(obs.x, obs.y), src);
+            vol.visualizeVisualSpace(obstacles, Eigen::Vector2d(obs(0), obs(1)), src);
             // outputVideo.write(src);
             time_sum += end_t - start_t;
             time_cnt += 1.0;
@@ -78,29 +78,29 @@ int main(int argc, char** argv) {
         }
         switch(key) {
             case 'w': {
-                if (obs.y > 30) {
-                    obs.y -= 4;
+                if (obs(1) > 30) {
+                    obs(1) -= 4;
                     render_flag = true;
                 }
                 break;
             }
             case 'a': {
-                if (obs.x > 30) {
-                    obs.x -= 4;
+                if (obs(0) > 30) {
+                    obs(0) -= 4;
                     render_flag = true;
                 }
                 break;
             }
             case 's': {
-                if (obs.y < 870) {
-                    obs.y += 4;
+                if (obs(1) < 870) {
+                    obs(1) += 4;
                     render_flag = true;
                 }
                 break;
             }
             case 'd': {
-                if (obs.x < 1170) {
-                    obs.x += 4;
+                if (obs(0) < 1170) {
+                    obs(0) += 4;
                     render_flag = true;
                 }
                 break;

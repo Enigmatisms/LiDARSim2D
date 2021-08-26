@@ -4,13 +4,8 @@
 
 const double bs_margin = 1e-7;
 
-void Edge::initWithObs(Eigen::Vector2d obs, int second_id) {
+void Edge::initWithObs(Eigen::Vector2d obs) {
     LOG_CHECK("Init with obs, this address is: %x, size is %lu", this, this->size());
-    proj_ids.first = -1;                            // 打断式投影的第二个edge中少一个投影点
-    if (second_id != -1)
-        proj_ids.second = static_cast<int>(this->size()) - 1;
-    else
-        proj_ids.second = -1;
     Eigen::Vector2d front_beam = this->front().block<2, 1>(0, 0) - obs, back_beam = this->back().block<2, 1>(0, 0) - obs;
     int max_size = static_cast<int>(this->size()) - 1;
     min_dist = std::min(front_beam.norm(), back_beam.norm());

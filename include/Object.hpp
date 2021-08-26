@@ -35,12 +35,8 @@ public:
 
     void externalOcclusion(Object& obj, Eigen::Vector2d obs);
 
-    static Eigen::Vector3d getIntersection(
-        const Eigen::Vector2d& vec,
-        const Eigen::Vector3d& p1,
-        const Eigen::Vector3d& p2, 
-        const Eigen::Vector2d& obs
-    );
+    /// @brief if the angle corvage of one chain is over 2 PI, then I should be break into two pieces 
+    void anglePostCheck(const Eigen::Vector2d& obs);
 private:
     bool rangeSuitable(
         const Eigen::Vector3d& p1, 
@@ -55,7 +51,14 @@ private:
     /// @brief returns whether a false choice is being operated
     void projectEdge2Edge(const Edge& src, const Eigen::Vector2d& obs, Edge& dst, HeapType& heap);
 
-    void breakEdge(Eigen::Vector2d b1, Eigen::Vector2d b2, Eigen::Vector2d obs, Edge& dst, HeapType& heap);
+    bool breakEdge(Eigen::Vector2d b1, Eigen::Vector2d b2, Eigen::Vector2d obs, Edge& dst, HeapType& heap);
+
+    static Eigen::Vector3d getIntersection(
+        const Eigen::Vector2d& vec,
+        const Eigen::Vector3d& p1,
+        const Eigen::Vector3d& p2, 
+        const Eigen::Vector2d& obs
+    );
 public:
     int id;
     bool valid;

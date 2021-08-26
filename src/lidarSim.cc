@@ -20,10 +20,13 @@ void LidarSim::scan(const std::vector<std::vector<cv::Point>>& obstacles, Eigen:
     act_range.resize(full_num, -1.0);
     Volume act_vol;
     std::vector<Edge> act_egs;
-    act_vol.calculateVisualSpace(obstacles, cv::Point(act_obs.x(), act_obs.y()), src);
+    act_vol.calculateVisualSpace(obstacles, act_obs, src);
     act_vol.visualizeVisualSpace(obstacles, act_obs, src);
     act_vol.getValidEdges(act_egs);
-    int angle_offset = static_cast<int>(floor(angle / angle_incre));
+    double pos_angle = angle;
+    if (pos_angle < 0.0)
+        pos_angle += 2 * M_PI;
+    int angle_offset = static_cast<int>(floor(pos_angle / angle_incre));
     for (const Edge& eg: act_egs)
         edgeIntersect(eg, act_obs, act_range);
     std::vector<double> sparse(sparse_ray_num);
@@ -73,11 +76,10 @@ void LidarSim::scanMakeSparse(const std::vector<double>& range, std::vector<doub
     for (size_t i = 0; i < sparse.size(); i++) {
         double range_sum = 0.0;
         int i5 = 5 * i;
-        for (size_t j = 0; j < 5; j++)
+        for (int j = 0; j < 5; j++)
             range_sum += range[(i5 + j + angle_offset) % full_num];
         range_sum /= 5.0;
-        range_sum += rng.gaussian(10.0 * range_sum / 400.0);
+        range_sum += rng.gaussian(0.1 * std::sqrt(range_sum));
         sparse[i] = range_sum;
     }
 }
-

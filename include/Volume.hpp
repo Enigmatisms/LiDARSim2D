@@ -12,7 +12,7 @@ public:
     Volume(): heap(ObjCompFunctor(objs)) {}
     ~Volume() {}
 public:
-    void calculateVisualSpace(const std::vector<Obstacle>& _obstcs, cv::Point obs, cv::Mat& src);
+    void calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::Vector2d obs, cv::Mat& src);
     
     void visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst) const;
 
@@ -20,12 +20,12 @@ public:
 
     void prettier(cv::Mat& src, const Eigen::Vector2d& obs) const;
 
-    void getValidEdges(std::vector<Edge>& edges);
-
     void reset() {
         while (heap.empty() == false) heap.pop();
         objs.clear();
     }
+
+    void getValidEdges(std::vector<Edge>& edges);
 private:
     struct ObjCompFunctor{
         ObjCompFunctor(const std::vector<Object>& _objs): objs(_objs) {}

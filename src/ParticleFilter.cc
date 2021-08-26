@@ -41,7 +41,7 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
     act_range.resize(ray_num, -1.0);
     Volume act_vol;
     std::vector<Edge> act_egs;
-    act_vol.calculateVisualSpace(obstacles, cv::Point(act_obs.x(), act_obs.y()), src);
+    act_vol.calculateVisualSpace(obstacles, act_obs, src);
     act_vol.visualizeVisualSpace(obstacles, act_obs, src);
     act_vol.getValidEdges(act_egs);
     for (const Edge& eg: act_egs)
@@ -60,7 +60,7 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
         std::vector<Edge> edegs;
         std::vector<double> range;
         range.resize(ray_num, -1.0);
-        vol.calculateVisualSpace(obstacles, cv::Point(pt.x(), pt.y()), src);
+        vol.calculateVisualSpace(obstacles, pt, src);
         vol.getValidEdges(edegs);
         for (const Edge& eg: edegs)
             edgeIntersect(eg, pt, range);
