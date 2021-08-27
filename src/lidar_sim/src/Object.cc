@@ -18,9 +18,7 @@ void Object::internalProjection(const Eigen::Vector2d& obs) {
             Edge& eg = edges[i];
             if (eg.valid == false || &eg == &this_edge)
                 continue;
-            printf("Source : %lu, dst: %lu\n", top, i);
             projectEdge2Edge(this_edge, obs, eg, heap);
-            printf("After Source : %lu, dst: %lu\n", top, i);
         }
     }
 }

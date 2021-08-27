@@ -89,7 +89,7 @@ void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::V
             }
         }
         LOG_SHELL("After external proj, valids in object %d are:", obj_id);
-        simplePreVisualize(src, cv::Point(obs.x(), obs.y()));
+        // simplePreVisualize(src, cv::Point(obs.x(), obs.y()));
     }
 }
 

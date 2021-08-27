@@ -4,14 +4,17 @@
 #include <opencv2/highgui.hpp>
 
 LidarSim::LidarSim(Eigen::Vector3d angles): 
-    sparse_min(angles.x()), sparse_max(angles.y()), angle_incre(angles.z()), sparse_incre(angle_incre * 5), rng(0)
+    sparse_min(angles.x()), sparse_max(angles.y()), sparse_incre(angles.z() * 5.0), angle_incre(angles.z()), rng(0)
 {
     full_num = std::round(2 * M_PI / angle_incre);
     sparse_ray_num = std::round((sparse_max - sparse_min) / sparse_incre);       // 5点平均
     printf("Sparse ray num: %d\n", sparse_ray_num);
 }
 
-void LidarSim::scan(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector2d act_obs, cv::Mat& src, double angle) {
+void LidarSim::scan(
+    const std::vector<std::vector<cv::Point>>& obstacles,
+    Eigen::Vector2d obs, std::vector<double>& range, cv::Mat& src, double angle
+) {
     cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, floors, cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
@@ -20,18 +23,18 @@ void LidarSim::scan(const std::vector<std::vector<cv::Point>>& obstacles, Eigen:
     act_range.resize(full_num, -1.0);
     Volume act_vol;
     std::vector<Edge> act_egs;
-    act_vol.calculateVisualSpace(obstacles, act_obs, src);
-    act_vol.visualizeVisualSpace(obstacles, act_obs, src);
+    act_vol.calculateVisualSpace(obstacles, obs, src);
+    act_vol.visualizeVisualSpace(obstacles, obs, src);
     act_vol.getValidEdges(act_egs);
     double pos_angle = angle;
     if (pos_angle < 0.0)
         pos_angle += 2 * M_PI;
-    int angle_offset = static_cast<int>(floor(pos_angle / angle_incre));
+    int angle_offset = static_cast<int>(floor((pos_angle - sparse_min) / angle_incre));
     for (const Edge& eg: act_egs)
-        edgeIntersect(eg, act_obs, act_range);
-    std::vector<double> sparse(sparse_ray_num);
-    scanMakeSparse(act_range, sparse, angle_offset);
-    visualizeRay(sparse, act_obs, src, angle);
+        edgeIntersect(eg, obs, act_range);
+    range.resize(sparse_ray_num, 0.0);
+    scanMakeSparse(act_range, range, angle_offset);
+    visualizeRay(range, obs, src, angle);
 }
 
 void LidarSim::edgeIntersect(const Edge& eg, const Eigen::Vector2d& obs, std::vector<double>& range) const {
@@ -65,7 +68,7 @@ void LidarSim::edgeIntersect(const Edge& eg, const Eigen::Vector2d& obs, std::ve
 void LidarSim::visualizeRay(const std::vector<double>& range, const Eigen::Vector2d& obs, cv::Mat& dst, double now_ang) const {
     const cv::Point cv_obs(obs.x(), obs.y());
     for (int i = 0; i < sparse_ray_num; i++) {
-        double angle = -M_PI + static_cast<double>(i) * sparse_incre + now_ang;
+        double angle = sparse_min + static_cast<double>(i) * sparse_incre + now_ang;
         Eigen::Vector2d ray = range[i] * Eigen::Vector2d(cos(angle), sin(angle)) + obs;
         cv::Point ray_end(ray.x(), ray.y());
         cv::line(dst, cv_obs, ray_end, cv::Scalar(0, 0, 255), 1);

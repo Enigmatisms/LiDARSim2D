@@ -8,7 +8,10 @@ public:
     ~LidarSim() {}
 public:
     /// @brief 模拟激光器扫描
-    void scan(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector2d act_obs, cv::Mat& src, double angle);
+    void scan(
+        const std::vector<std::vector<cv::Point>>& obstacles,
+        Eigen::Vector2d act_obs, std::vector<double>& range, cv::Mat& src, double angle
+    );
 
     void scanMakeSparse(const std::vector<double>& range, std::vector<double>& sparse, int angle_offset);
 private:
@@ -16,11 +19,11 @@ private:
 
     void edgeIntersect(const Edge& eg, const Eigen::Vector2d& obs, std::vector<double>& range) const;
 private:
-    int full_num;
-    int sparse_ray_num;
-    double angle_incre;
     double sparse_min;
     double sparse_max;
     double sparse_incre;
+    double angle_incre;
     cv::RNG rng;
+    int full_num;
+    int sparse_ray_num;
 };

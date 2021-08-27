@@ -1,8 +1,10 @@
 #include "ParticleFilter.hpp"
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <ros/ros.h>
 #include <chrono>
 #include "mapEdit.h"
+#include "consts.h"
 
 cv::Mat src;
 cv::Point obs;
@@ -20,14 +22,12 @@ void on_mouse(int event, int x,int y, int flags, void *ustc) {
 }
 
 int main(int argc, char** argv) {
+    ros::init(argc, argv, "filter");
+    ros::NodeHandle nh;
     cv::setNumThreads(4);
     std::vector<std::vector<cv::Point>> obstacles;
-    std::string name = "test";
-    if (argc < 2) {
-        std::cerr << "Usage: ./main <Map name> <optional: int, whether to specify the view point.>\n";
-        return -1;
-    }
-    name = std::string(argv[1]);
+    std::string name = nh.param<std::string>("/filter/map_name", "standard");
+    int speed = nh.param<int>("/filter/speed", 3);
     mapLoad("../maps/" + name + ".txt", obstacles);
     src.create(cv::Size(1200, 900), CV_8UC3);
     cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
@@ -45,9 +45,6 @@ int main(int argc, char** argv) {
     cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
     cv::setMouseCallback("disp", on_mouse, NULL);
     obs = cv::Point(367, 769);
-    int speed = 3;
-    if (argc > 2) 
-        speed = atoi(argv[2]);
     while (obs_set == false) {
         cv::imshow("disp", src);
         char key = cv::waitKey(10);

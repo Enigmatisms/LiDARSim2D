@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <param name="use_sim_time" value="false" />
+  <node pkg="lidar_sim" type="editor" name="editor" output="screen">
+    <param name="map_name" value="test" type="string"/>
+  </node>
+</launch>

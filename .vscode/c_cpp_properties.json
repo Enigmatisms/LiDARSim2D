@@ -7,7 +7,7 @@
                 "/usr/include/**",
                 "/usr/include/eigen3/**",
                 "/usr/local/include/**",
-                "${workspaceFolder}/include/**"
+                "${workspaceFolder}/src/lidar_sim/include/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
