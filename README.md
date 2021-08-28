@@ -4,13 +4,13 @@
 
 2D LiDAR Simulator V 1.0🎇 is built upon the repository🎉🎉: [Github🔗: Enigamtisms/Volume2D](), which is, recently, updated. This simulator contains: 
 
-- **<u>map editor</u>**🎛 (with which you can build your own map), 
-- **<u>ROS integration</u>**🚀:
+- **map editor**🎛 (with which you can build your own map), 
+- **ROS integration**🚀:
   - rosbag generation without publishing
   - rviz visualization for LaserScan, tf, Odometry (perturbed)
   - Direct message publishing
-- **<u>Easy-to-use</u>**👌 roslaunch **<u>parameter setting</u>**🗝 for simulated LiDAR and other perimeter settings.
-- Fluent opencv-based k**<u>eyboard / mouse control</u>**⌨🖱 with **<u>high FPS</u>**⏲, visualizing free space and scan.
+- **Easy-to-use**👌 roslaunch **parameter setting**🗝 for simulated LiDAR and other perimeter settings.
+- Fluent opencv-based k**eyboard / mouse control**⌨🖱 with **high FPS**⏲, visualizing free space and scan.
 
 Some demo pictures are shown as follows:
 
