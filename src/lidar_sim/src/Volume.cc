@@ -6,7 +6,7 @@
 
 const cv::Rect walls(0, 0, 1200, 900);
 const cv::Rect floors(30, 30, 1140, 840);
-const double luminous_range = 2.5e5;
+constexpr double luminous_range = 2.5e5;
 
 void Volume::visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst) const {
     cv::rectangle(dst, walls, cv::Scalar(10, 10, 10), -1);

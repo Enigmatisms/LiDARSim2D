@@ -5,11 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) filter",
+            "name": "(gdb) scan",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/filter",
-            "args": ["test", "5"],
+            "program": "${workspaceFolder}/devel/lib/lidar_sim/scan",
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

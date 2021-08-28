@@ -14,8 +14,8 @@ void Object::internalProjection(const Eigen::Vector2d& obs) {
         size_t top = heap.top();
         heap.pop();
         for (size_t i = 0; i < edges.size(); i++) {
-            Edge& this_edge = edges[top];
             Edge& eg = edges[i];
+            Edge& this_edge = edges[top];
             if (eg.valid == false || &eg == &this_edge)
                 continue;
             projectEdge2Edge(this_edge, obs, eg, heap);

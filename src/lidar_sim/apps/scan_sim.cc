@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     double angle_min = nh.param<double>("/scan/angle_min", -M_PI / 2);
     double angle_max = nh.param<double>("/scan/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/scan/angle_incre", M_PI / 1800.0);
-    double fps = nh.param<double>("/scan/lidar_fps", 10.0);
+    double fps = nh.param<double>("/scan/lidar_fps", 20.0);
     double translation_noise = nh.param<double>("/scan/translation_noise", 0.08);
     double rotation_noise = nh.param<double>("/scan/rotation_noise", 0.01);
     double lidar_noise = nh.param<double>("/scan/lidar_noise", 0.02);

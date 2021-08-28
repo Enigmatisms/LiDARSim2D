@@ -1,5 +1,6 @@
 .vscode/*
 build/*
 devel/*
+build_debug/*
 
 !*.json
