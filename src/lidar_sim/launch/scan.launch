@@ -3,11 +3,11 @@
   <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/config.rviz" />
   <node pkg="lidar_sim" type="scan" name="scan" output="screen">
     <!-- controller settings -->
-    <param name="trans_speed" value="4" type="double"/>
+    <param name="trans_speed" value="3" type="double"/>
     <param name="rot_vel" value="1" type="double"/>
     <param name="init_x" value="367.0" type="double"/>
     <param name="init_y" value="769.0" type="double"/>
-    <param name="kp" value="0.05" type="double"/>
+    <param name="kp" value="0.04" type="double"/>
     <param name="ki" value="0.0001" type="double"/>
     <param name="kd" value="0.001" type="double"/>
 
@@ -15,15 +15,16 @@
     <param name="angle_min" value="-1.570796" type="double"/>
     <param name="angle_max" value="1.570796" type="double"/>
     <param name="angle_incre" value="0.0017453" type="double"/>
-    <param name="lidar_fps" value="5" type="double"/>
+    <param name="lidar_noise" value="0.01" type="double"/>
+    <param name="lidar_fps" value="10" type="double"/>
 
     <!-- Odometry settings -->
-    <param name="translation_noise" value="4" type="double"/>
-    <param name="rotation_noise" value="0.05" type="double"/>
+    <param name="translation_noise" value="0.04" type="double"/>
+    <param name="rotation_noise" value="0.0005" type="double"/>
 
     <!-- other settings -->
-    <param name="map_name" value="test" type="string"/>
-    <param name="bag_name" value="test" type="string"/>
+    <param name="map_name" value="standard5" type="string"/>
+    <param name="bag_name" value="standard5" type="string"/>
     <param name="skip_selection" value="false" type="bool"/>
     <param name="direct_pub" value="true" type="bool"/>
   </node>

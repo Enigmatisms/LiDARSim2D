@@ -31,8 +31,8 @@ void makePerturbedOdom(
     static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
     static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
     static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
-    delta_p(0) += trans_noise(engine);
-    delta_p(1) += trans_noise(engine);
+    delta_p(0) = delta_p(0) * 0.02 + trans_noise(engine);
+    delta_p(1) = delta_p(1) * 0.02 + trans_noise(engine);
     delta_p(2) += rot_noise(engine);
     __pose__ = __pose__ + delta_p;
     odom.header.frame_id = frame_id;

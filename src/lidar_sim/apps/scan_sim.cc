@@ -11,8 +11,8 @@
 #include "consts.h"
 
 cv::Mat src;
-Eigen::Vector2d obs, orient, translation, init_obs;
-double angle = 0.0;
+Eigen::Vector2d obs, orient, translation, init_obs, total_trans;
+double angle = 0.0, angle_sum = 0.0;
 double delta_angle = 0.0;
 bool obs_set = false, mouse_ctrl = false, record_bag = false;
 
@@ -46,8 +46,9 @@ int main(int argc, char** argv) {
     double angle_max = nh.param<double>("/scan/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/scan/angle_incre", M_PI / 1800.0);
     double fps = nh.param<double>("/scan/lidar_fps", 10.0);
-    double translation_noise = nh.param<double>("/scan/translation_noise", 4);
-    double rotation_noise = nh.param<double>("/scan/rotation_noise", 0.05);
+    double translation_noise = nh.param<double>("/scan/translation_noise", 0.08);
+    double rotation_noise = nh.param<double>("/scan/rotation_noise", 0.01);
+    double lidar_noise = nh.param<double>("/scan/lidar_noise", 0.02);
     bool skip_selection = nh.param<bool>("/scan/skip_selection", false);
     bool direct_pub = nh.param<bool>("/scan/direct_pub", false);
     ros::Publisher scan_pub, odom_pub;
@@ -88,10 +89,11 @@ int main(int argc, char** argv) {
         }
     }
     init_obs = obs;
+    // __pose__ = 
     bool render_flag = true;
     double time_cnt = 1.0, time_sum = 0.0, bag_time_sum = 0.0;
     Eigen::Vector3d angles(angle_min, angle_max, angle_incre);
-    LidarSim ls(angles);
+    LidarSim ls(angles, lidar_noise);
     std::vector<Eigen::Vector3d> gtt;       // ground truth tragectory
     rosbag::Bag bag(pack_path + "/../../bags/" + name + ".bag", rosbag::bagmode::Write);
     nav_msgs::Odometry odom;
@@ -108,6 +110,8 @@ int main(int argc, char** argv) {
             tf::StampedTransform stamped_tf;
             makeTransform(Eigen::Vector3d(obs.x() * 0.02, obs.y() * 0.02, angle), "map", "scan", stamped_tf);
             if (record_bag == true) {
+                total_trans += translation;
+                angle_sum += delta_angle;
                 sendStampedTranform(stamped_tf);
                 bag_time_sum += timer.toc();
                 cv::circle(src, cv::Point(15, 15), 10, cv::Scalar(0, 0, 255), -1);
@@ -121,7 +125,7 @@ int main(int argc, char** argv) {
                 sensor_msgs::LaserScan scan;
                 tf::tfMessage tf_msg;
                 Eigen::Vector3d delta_pose;
-                delta_pose << translation, angle;
+                delta_pose << total_trans, angle_sum;
                 makeScan(range, angles, scan, "scan", msg_interval / 1e3);
                 stampedTransform2TFMsg(stamped_tf, tf_msg);
                 makePerturbedOdom(delta_pose, odom, noise, "map", "scan");
@@ -129,9 +133,11 @@ int main(int argc, char** argv) {
                 bag.write("sim_tf", ros::Time::now(), tf_msg);
                 bag.write("sim_odom", ros::Time::now(), odom);
                 if (direct_pub == true) {
-                    // odom_pub.publish(odom);
+                    odom_pub.publish(odom);
                     scan_pub.publish(scan);
                 }
+                total_trans.setZero();
+                angle_sum = 0.0;
             }
             translation.setZero();
         }
@@ -186,6 +192,9 @@ int main(int argc, char** argv) {
             }
             case 'r': {
                 record_bag = !record_bag;
+                if (record_bag == true) {
+                    __pose__ << obs * 0.02, angle;
+                }
                 bag_time_sum = 0.0;
                 break;
             }

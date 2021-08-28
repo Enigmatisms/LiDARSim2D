@@ -4,7 +4,7 @@
 
 class LidarSim {
 public:
-    LidarSim(Eigen::Vector3d angles);
+    LidarSim(Eigen::Vector3d angles, double noise_lv);
     ~LidarSim() {}
 public:
     /// @brief 模拟激光器扫描
@@ -26,4 +26,5 @@ private:
     cv::RNG rng;
     int full_num;
     int sparse_ray_num;
+    const double noise_level;
 };

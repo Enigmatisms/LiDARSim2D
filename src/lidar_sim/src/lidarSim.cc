@@ -3,8 +3,9 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
-LidarSim::LidarSim(Eigen::Vector3d angles): 
-    sparse_min(angles.x()), sparse_max(angles.y()), sparse_incre(angles.z() * 5.0), angle_incre(angles.z()), rng(0)
+LidarSim::LidarSim(Eigen::Vector3d angles, double noise_lv): 
+    sparse_min(angles.x()), sparse_max(angles.y()), sparse_incre(angles.z() * 5.0), 
+    angle_incre(angles.z()), rng(0), noise_level(noise_lv)
 {
     full_num = std::round(2 * M_PI / angle_incre);
     sparse_ray_num = std::round((sparse_max - sparse_min) / sparse_incre);       // 5点平均
@@ -82,7 +83,7 @@ void LidarSim::scanMakeSparse(const std::vector<double>& range, std::vector<doub
         for (int j = 0; j < 5; j++)
             range_sum += range[(i5 + j + angle_offset) % full_num];
         range_sum /= 5.0;
-        range_sum += rng.gaussian(0.1 * std::sqrt(range_sum));
+        range_sum += rng.gaussian(noise_level * std::sqrt(range_sum));
         sparse[i] = range_sum;
     }
 }
