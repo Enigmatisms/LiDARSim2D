@@ -12,18 +12,21 @@
     <param name="kd" value="0.001" type="double"/>
 
     <!-- LiDAR settings -->
-    <param name="angle_min" value="-1.570796" type="double"/>
-    <param name="angle_max" value="1.570796" type="double"/>
+    <!-- <param name="angle_min" value="-1.570796" type="double"/> -->
+    <!-- <param name="angle_max" value="1.570796" type="double"/> -->
+
+    <param name="angle_min" value="-2.1" type="double"/>
+    <param name="angle_max" value="2.1" type="double"/>
     <param name="angle_incre" value="0.0017453" type="double"/>
-    <param name="lidar_noise" value="0.01" type="double"/>
-    <param name="lidar_fps" value="20" type="double"/>
+    <param name="lidar_noise" value="0.03" type="double"/>
+    <param name="lidar_fps" value="25" type="double"/>
 
     <!-- Odometry settings -->
     <param name="translation_noise" value="0.04" type="double"/>
     <param name="rotation_noise" value="0.0005" type="double"/>
 
     <!-- other settings -->
-    <param name="map_name" value="standard4" type="string"/>
+    <param name="map_name" value="standard6" type="string"/>
     <param name="bag_name" value="test" type="string"/>
     <param name="skip_selection" value="false" type="bool"/>
     <param name="direct_pub" value="true" type="bool"/>

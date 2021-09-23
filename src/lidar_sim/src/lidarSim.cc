@@ -30,7 +30,7 @@ void LidarSim::scan(
     double pos_angle = angle;
     if (pos_angle < 0.0)
         pos_angle += 2 * M_PI;
-    int angle_offset = static_cast<int>(floor((pos_angle - sparse_min) / angle_incre));
+    int angle_offset = static_cast<int>(floor((pos_angle + M_PI + sparse_min) / angle_incre));
     for (const Edge& eg: act_egs)
         edgeIntersect(eg, obs, act_range);
     range.resize(sparse_ray_num, 0.0);
