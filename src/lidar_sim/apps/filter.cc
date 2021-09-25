@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 	// cv::VideoWriter outputVideo;
 	// outputVideo.open(outPath, 1482049860, 1.5, sWH);	    // DIVX
     printf("Main started.\n");
-    int img_cnt = 0;
+    // int img_cnt = 0;
     while (true) {
         cv::imshow("disp", src);
         char key = cv::waitKey(1);

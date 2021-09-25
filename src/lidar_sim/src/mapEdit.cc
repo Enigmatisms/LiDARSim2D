@@ -1,3 +1,4 @@
+#include <array>
 #include "mapEdit.h"
 
 void mapDraw(const std::vector<Obstacle>& obstalces, const Obstacle& obst, cv::Mat& src) {
@@ -13,6 +14,19 @@ void mapDraw(const std::vector<Obstacle>& obstalces, const Obstacle& obst, cv::M
     }
     for (const cv::Point& pt: obst) {
         cv::circle(src, pt, 2, cv::Scalar(0, 0, 0), -1);
+    }
+}
+
+void extraTask(const std::array<cv::Point, 2>& task, cv::Mat& src, int mode_id) {
+    if (task[0].x < 0 || task[1].x < 0) return;
+    if (mode_id == 0) {
+        cv::line(src, task[0], task[1], cv::Scalar(0, 255, 255), 3);
+    } else if (mode_id == 1) {
+        cv::rectangle(src, task[0], task[1], cv::Scalar(0, 255, 255), 3);
+    } else {
+        const cv::Point diff = task[0] - task[1];
+        int radius = std::sqrt(diff.dot(diff));
+        cv::circle(src, task[0], radius, cv::Scalar(0, 255, 255), 3);
     }
 }
 
