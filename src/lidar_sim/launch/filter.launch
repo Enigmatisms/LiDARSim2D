@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <node pkg="lidar_sim" type="filter" name="filter" output="screen">
-    <param name="map_name" value="standard" type="string"/>
+    <param name="map_name" value="corridor" type="string"/>
     <param name="speed" value="4" type="int"/>
   </node>
 </launch>

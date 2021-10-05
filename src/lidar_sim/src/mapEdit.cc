@@ -63,3 +63,12 @@ void mapSave(const std::vector<std::vector<cv::Point>>& obstacles, std::string p
     }
     file.close();
 }
+
+void plotSpeedInfo(cv::Mat& src, double speed) {
+    cv::rectangle(src, cv::Rect(900, 5, 104, 20), cv::Scalar(50, 50, 50), -1);
+    int length = int(100 * (speed - 1.0));
+    cv::rectangle(src, cv::Rect(902, 7, length, 16), cv::Scalar(0, 255, 0), -1);
+    std::string str = "speed";
+    cv::putText(src, str.c_str(), cv::Point(1010, 15),
+					cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(120, 120, 120));
+}

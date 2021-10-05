@@ -2,7 +2,7 @@
 <launch>
   <param name="use_sim_time" value="false" />
   <node pkg="lidar_sim" type="editor" name="editor" output="screen">
-    <param name="map_name" value="standard3" type="string"/>
+    <param name="map_name" value="circle" type="string"/>
     <param name="circle_reso" value="300" type="int"/>
   </node>
 </launch>

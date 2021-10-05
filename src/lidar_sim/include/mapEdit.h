@@ -14,3 +14,5 @@ void mapLoad(std::string path, std::vector<std::vector<cv::Point>>& obstacles);
 void mapSave(const std::vector<std::vector<cv::Point>>& obstacles, std::string path);
 
 void extraTask(const std::array<cv::Point, 2>& task, cv::Mat& src, int mode_id);
+
+void plotSpeedInfo(cv::Mat& src, double speed);

@@ -80,7 +80,16 @@ target_link_libraries(editor
   pthread
 )
 
-install(TARGETS filter scan editor
+add_executable(test_key apps/testKey.cc
+  src/keyCtrl.cc
+)
+
+target_link_libraries(test_key
+  ${catkin_LIBRARIES}
+  pthread
+)
+
+install(TARGETS filter scan editor test_key
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
