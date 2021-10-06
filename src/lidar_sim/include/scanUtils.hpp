@@ -45,13 +45,21 @@ void sendStampedTranform(const tf::StampedTransform& _tf);
 
 double pidAngle(const Eigen::Vector2d& orient, const Eigen::Vector2d& obs, double now);
 
+std::pair<double, double> makeImuMsg(
+    const Eigen::Vector2d& speed,
+    std::string frame_id,
+    double now_ang,
+    sensor_msgs::Imu& msg,
+    Eigen::Vector2d vel_var,
+    Eigen::Vector2d ang_var
+);
+
 void makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
     sensor_msgs::Imu& msg,
-    Eigen::Vector2d vel_var = Eigen::Vector2d::Zero(),
-    Eigen::Vector2d ang_var = Eigen::Vector2d::Zero()
+    std::ofstream* file = nullptr
 );
 
 class TicToc {

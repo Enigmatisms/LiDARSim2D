@@ -100,7 +100,9 @@ void makeScan(
 }
 
 // trans 以及 speed 都是小车坐标系的(因为是IMU嘛)
-void makeImuMsg(
+#include <algorithm>
+#include <deque>
+std::pair<double, double> makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
@@ -110,8 +112,9 @@ void makeImuMsg(
 ) {
     static int cnt = 0;
     static Eigen::Vector2d last_vel = Eigen::Vector2d::Zero(), last_acc = Eigen::Vector2d::Zero();
-    static double last_ang = 0.0, last_ang_vel = 0.0;
+    static double last_ang = 0.0, last_ang_vel = 0.0, last_duration = 0.0;
     static ros::Time last_stamp = ros::Time::now();
+    static std::deque<double> durations;
     msg.header.frame_id = cnt;
     msg.header.stamp = ros::Time::now();
     msg.header.frame_id = frame_id;
@@ -121,10 +124,20 @@ void makeImuMsg(
 
     msg.linear_acceleration_covariance[0] = vel_var(0);
     msg.linear_acceleration_covariance[4] = vel_var(1);
-    const double duration = (msg.header.stamp - last_stamp).toSec();
+    double duration_raw = (msg.header.stamp - last_stamp).toSec();
+    double duration = 0.4 * duration_raw + 0.6 * last_duration;
+    durations.push_back(duration);
+    if (durations.size() > 5) {
+        durations.pop_front();
+        std::vector<double> vec(3);
+        std::partial_sort_copy(durations.begin(), durations.end(), vec.begin(), vec.end());
+        duration = vec.back();
+    }
+    last_duration = duration;
+    last_stamp = msg.header.stamp;
     Eigen::Vector2d acc = Eigen::Vector2d::Zero();
     double ang_vel = 0.0;
-    if (cnt > 0) {
+    if (cnt > 5) {
         Eigen::Vector2d this_vel = speed / duration;
         this_vel = 0.8 * speed + 0.2 * last_vel;
         acc = (this_vel - last_vel) / duration;
@@ -142,4 +155,18 @@ void makeImuMsg(
     msg.angular_velocity.y = 0.0;
     msg.angular_velocity.z = ang_vel;
     cnt++;
+    
+    return std::make_pair(duration, duration_raw);
+}
+
+void makeImuMsg(
+    const Eigen::Vector2d& speed,
+    std::string frame_id,
+    double now_ang,
+    sensor_msgs::Imu& msg,
+    std::ofstream* file
+) {
+    const auto& [duration, raw_du] = makeImuMsg(speed, frame_id, now_ang, msg, Eigen::Vector2d::Zero(), Eigen::Vector2d::Zero());
+    if (file != nullptr)
+        (*file) << msg.linear_acceleration.x << "," << msg.linear_acceleration.y << "," << duration << "," << raw_du << std::endl;
 }

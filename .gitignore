@@ -2,5 +2,6 @@
 build/*
 devel/*
 build_debug/*
+data/*
 
 !*.json

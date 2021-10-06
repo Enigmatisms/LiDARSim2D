@@ -83,6 +83,7 @@ int main(int argc, char** argv) {
     double lidar_noise = nh.param<double>("/scan/lidar_noise", 0.02);
     bool skip_selection = nh.param<bool>("/scan/skip_selection", false);
     bool direct_pub = nh.param<bool>("/scan/direct_pub", false);
+    bool imu_plot = nh.param<bool>("/scan/imu_plot", false);
     mouse_ctrl = nh.param<bool>("/scan/enable_mouse_ctrl", false);
     ros::Publisher scan_pub, odom_pub, imu_pub;
     if (direct_pub == true) {
@@ -100,11 +101,13 @@ int main(int argc, char** argv) {
     std::string pack_path = getPackagePath();
     printf("Package prefix: %s\n", pack_path.c_str());
     mapLoad(pack_path + "/../../maps/" + name + ".txt", obstacles);
+    std::ofstream* file = nullptr;
+    if (imu_plot)
+        file = new std::ofstream(pack_path + "/../../data/data.txt", std::ios::out);
     src.create(cv::Size(1200, 900), CV_8UC3);
     cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, floors, cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
-    /// collision box
     cv::Mat collision_box;
     cv::cvtColor(src, collision_box, cv::COLOR_BGR2GRAY);
     cv::threshold(collision_box, collision_box, 25, 255, cv::THRESH_BINARY_INV);
@@ -174,24 +177,35 @@ int main(int argc, char** argv) {
         bool running = states[0] | states[1] | states[2] | states[3];
         if (running && !collided) {
             act_speed = (0.5 * trans_speed + 0.5 * act_speed);
-            if (std::abs(act_speed - trans_speed) < 1e-4)
+            if (std::abs(act_speed - trans_speed) < 1e-5)
                 act_speed = trans_speed;
         } else {
             act_speed *= 0.5;
-            if (act_speed < 1e-4)
+            if (act_speed < 1e-5)
                 act_speed = 0.0;
         }
         if (bag_time_sum > msg_interval && record_bag == true) {
             bag_time_sum = 0.0;
             nav_msgs::Odometry odom;
             sensor_msgs::LaserScan scan;
-            sensor_msgs::Imu imu_msg;
             tf::tfMessage tf_msg;
             Eigen::Vector3d delta_pose;
             delta_pose << total_trans, angle_sum;
             makeScan(range, angles, scan, "scan", msg_interval / 1e3);
             stampedTransform2TFMsg(stamped_tf, tf_msg);
             makePerturbedOdom(delta_pose, odom, noise, "map", "scan");
+            bag.write("scan", ros::Time::now(), scan);
+            bag.write("sim_tf", ros::Time::now(), tf_msg);
+            bag.write("sim_odom", ros::Time::now(), odom);
+            if (direct_pub == true) {
+                odom_pub.publish(odom);
+                scan_pub.publish(scan);
+            }
+            total_trans.setZero();
+            angle_sum = 0.0;
+        }
+        if (direct_pub == true) {       // IMU will be published unconditionally
+            sensor_msgs::Imu imu_msg;
             double act_trans_x = 0.0, act_trans_y = 0.0;
             if (states[0] == true)
                 act_trans_x = act_speed;
@@ -201,19 +215,13 @@ int main(int argc, char** argv) {
                 act_trans_y = -act_speed;
             else if (states[3] == true)
                 act_trans_y = act_speed;
-            Eigen::Vector2d imu_trans(act_trans_x, act_trans_y);
-            makeImuMsg(imu_trans, "scan", angle, imu_msg);
-            bag.write("scan", ros::Time::now(), scan);
-            bag.write("sim_tf", ros::Time::now(), tf_msg);
-            bag.write("sim_odom", ros::Time::now(), odom);
-            bag.write("sim_imu", ros::Time::now(), imu_msg);
-            if (direct_pub == true) {
-                odom_pub.publish(odom);
-                scan_pub.publish(scan);
-                imu_pub.publish(imu_msg);
-            }
-            total_trans.setZero();
-            angle_sum = 0.0;
+            if (collided)
+                act_trans_x = act_trans_y = 0.0;
+            Eigen::Vector2d imu_trans(act_trans_x * 0.02, act_trans_y * 0.02);
+            makeImuMsg(imu_trans, "scan", angle, imu_msg, file);
+            imu_pub.publish(imu_msg);
+            if (record_bag == true)
+                bag.write("sim_imu", ros::Time::now(), imu_msg);
         }
         translation.setZero();
         if (states[0] == true) {
@@ -261,6 +269,10 @@ int main(int argc, char** argv) {
             break;
     }
     bag.close();
+    if (imu_plot == true) {
+        file->close();
+        delete file;
+    }
     double mean_time = time_sum / time_cnt;
     printf("Average running time: %.6lf ms, fps: %.6lf hz\n", mean_time, 1000.0 / mean_time);
     cv::destroyAllWindows();

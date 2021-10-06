@@ -4,7 +4,7 @@
   <node pkg="lidar_sim" type="scan" name="scan" output="screen">
     <!-- controller settings -->
 
-    <param name="enable_mouse_ctrl" value="true" type="bool"/>
+    <param name="enable_mouse_ctrl" value="false" type="bool"/>
 
     <param name="trans_speed" value="1.5" type="double"/>
     <param name="rot_vel" value="2" type="double"/>
@@ -33,5 +33,6 @@
     <param name="bag_name" value="test" type="string"/>
     <param name="skip_selection" value="false" type="bool"/>
     <param name="direct_pub" value="true" type="bool"/>
+    <param name="imu_plot" value="true" type="bool"/>
   </node>
 </launch>
