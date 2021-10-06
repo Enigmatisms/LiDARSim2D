@@ -16,7 +16,7 @@
 cv::Mat src;
 Eigen::Vector2d obs, orient, translation, init_obs, total_trans;
 double angle = 0.0, angle_sum = 0.0;
-double delta_angle = 0.0, trans_speed = 2.0;
+double delta_angle = 0.0, trans_speed = 2.0, act_speed = 0.0;
 bool obs_set = false, mouse_ctrl = true, record_bag = false;
 
 void on_mouse(int event, int x, int y, int flags, void *ustc) {
@@ -29,31 +29,38 @@ void on_mouse(int event, int x, int y, int flags, void *ustc) {
     } else if (mouse_ctrl == true && obs_set == true) {
         orient(0) = double(x);
         orient(1) = double(y);
-        if (event == cv::EVENT_LBUTTONDOWN) {
+        if (event == cv::EVENT_LBUTTONDOWN)
             printf("Now angle: %.4lf\n", angle * 180.0 / M_PI);
-        }
     } 
     if (event == cv::EVENT_MOUSEWHEEL) {
         int flag = cv::getMouseWheelDelta(flags);
-        if (flag < 0) {
+        if (flag < 0)
             trans_speed = std::min(trans_speed + 0.05, 2.0);
-        } else {
+        else
             trans_speed = std::max(trans_speed - 0.05, 1.0);
-        }
     }
 }
 
 std::array<bool, 8> states;
+std::array<uchar, 5> trigger;
 
-bool controlFlow(char stat) {
-    bool old_val = states[6];
+void controlFlow(char stat) {
+    std::array<bool, 5> tmp;
     for (int i = 0; i < 8; i++) {
+        if (i < 5)
+            tmp[i] = states[i];
         if (stat & (0x01 << i))
             states[i] = true;
         else    
             states[i] = false;
+        if (i < 5) {
+            if (tmp[i] == true && states[i] == false)   // falling edge
+                trigger[i] = 0x01;
+            else if (i < 4 && tmp[i] == false && states[i] == true)     // rising edge
+                trigger[i] = 0x02;
+            else trigger[i] = 0x00;
+        }
     }
-    return ((old_val == true) && (states[6] == false));
 }
 
 int main(int argc, char** argv) {
@@ -77,10 +84,11 @@ int main(int argc, char** argv) {
     bool skip_selection = nh.param<bool>("/scan/skip_selection", false);
     bool direct_pub = nh.param<bool>("/scan/direct_pub", false);
     mouse_ctrl = nh.param<bool>("/scan/enable_mouse_ctrl", false);
-    ros::Publisher scan_pub, odom_pub;
+    ros::Publisher scan_pub, odom_pub, imu_pub;
     if (direct_pub == true) {
         scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 100);
         odom_pub = nh.advertise<nav_msgs::Odometry>("sim_odom", 100);
+        imu_pub = nh.advertise<sensor_msgs::Imu>("sim_imu", 100);
     }
     K_P = nh.param<double>("/scan/kp", 0.2);
     K_I = nh.param<double>("/scan/ki", 0.0001);
@@ -101,8 +109,8 @@ int main(int argc, char** argv) {
     cv::cvtColor(src, collision_box, cv::COLOR_BGR2GRAY);
     cv::threshold(collision_box, collision_box, 25, 255, cv::THRESH_BINARY_INV);
     cv::dilate(collision_box, collision_box, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
-    for (int i = 0; i < 8; i++)
-        states[i] = false;
+    states.fill(false);
+    trigger.fill(false);
     for (const Obstacle& egs: obstacles) {
         cv::circle(src, egs.front(), 3, cv::Scalar(0, 0, 255), -1);
         cv::circle(src, egs.back(), 3, cv::Scalar(255, 0, 0), -1);
@@ -136,13 +144,13 @@ int main(int argc, char** argv) {
         cv::imshow("disp", src);
         cv::waitKey(5);
         char key = status;
-        bool edge_down = controlFlow(key);
-        record_bag = edge_down ^ record_bag;
-        bool break_flag = false;
+        controlFlow(key);
+        record_bag = bool(trigger.back()) ^ record_bag;
+        bool break_flag = false, collided = false;
         timer.tic();
         std::vector<double> range;
         ls.scan(obstacles, obs, range, src, angle);
-        plotSpeedInfo(src, trans_speed);
+        plotSpeedInfo(src, trans_speed, act_speed);
         time_sum += timer.toc();
         tf::StampedTransform stamped_tf;
         makeTransform(Eigen::Vector3d(obs.x() * 0.02, obs.y() * 0.02, angle), "map", "scan", stamped_tf);
@@ -152,6 +160,7 @@ int main(int argc, char** argv) {
                 translation(1) = 0.0;
             if (collision_box.at<uchar>(int(obs.y()), int(tmp.x())))
                 translation(0) = 0.0;
+            collided = true;
         }
         if (record_bag == true) {
             total_trans += translation;
@@ -162,49 +171,73 @@ int main(int argc, char** argv) {
         }
         time_cnt += 1.0;
         obs += translation;
+        bool running = states[0] | states[1] | states[2] | states[3];
+        if (running && !collided) {
+            act_speed = (0.5 * trans_speed + 0.5 * act_speed);
+            if (std::abs(act_speed - trans_speed) < 1e-4)
+                act_speed = trans_speed;
+        } else {
+            act_speed *= 0.5;
+            if (act_speed < 1e-4)
+                act_speed = 0.0;
+        }
         if (bag_time_sum > msg_interval && record_bag == true) {
             bag_time_sum = 0.0;
             nav_msgs::Odometry odom;
             sensor_msgs::LaserScan scan;
+            sensor_msgs::Imu imu_msg;
             tf::tfMessage tf_msg;
             Eigen::Vector3d delta_pose;
             delta_pose << total_trans, angle_sum;
             makeScan(range, angles, scan, "scan", msg_interval / 1e3);
             stampedTransform2TFMsg(stamped_tf, tf_msg);
             makePerturbedOdom(delta_pose, odom, noise, "map", "scan");
+            double act_trans_x = 0.0, act_trans_y = 0.0;
+            if (states[0] == true)
+                act_trans_x = act_speed;
+            else if (states[2] == true)
+                act_trans_x = -act_speed;
+            if (states[1] == true)
+                act_trans_y = -act_speed;
+            else if (states[3] == true)
+                act_trans_y = act_speed;
+            Eigen::Vector2d imu_trans(act_trans_x, act_trans_y);
+            makeImuMsg(imu_trans, "scan", angle, imu_msg);
             bag.write("scan", ros::Time::now(), scan);
             bag.write("sim_tf", ros::Time::now(), tf_msg);
             bag.write("sim_odom", ros::Time::now(), odom);
+            bag.write("sim_imu", ros::Time::now(), imu_msg);
             if (direct_pub == true) {
                 odom_pub.publish(odom);
                 scan_pub.publish(scan);
+                imu_pub.publish(imu_msg);
             }
             total_trans.setZero();
             angle_sum = 0.0;
         }
         translation.setZero();
         if (states[0] == true) {
-            translation(0) += cos(angle) * trans_speed;
-            translation(1) += sin(angle) * trans_speed;
+            translation(0) += cos(angle) * act_speed;
+            translation(1) += sin(angle) * act_speed;
         }
         if (states[1] == true) {
-            translation(0) += sin(angle) * trans_speed;
-            translation(1) += -cos(angle) * trans_speed;
+            translation(0) += sin(angle) * act_speed;
+            translation(1) += -cos(angle) * act_speed;
         }
         if (states[2] == true) {
-            translation(0) += -cos(angle) * trans_speed;
-            translation(1) += -sin(angle) * trans_speed;
+            translation(0) += -cos(angle) * act_speed;
+            translation(1) += -sin(angle) * act_speed;
         }
         if (states[3] == true) {
-            translation(0) += -sin(angle) * trans_speed;
-            translation(1) += cos(angle) * trans_speed;
+            translation(0) += -sin(angle) * act_speed;
+            translation(1) += cos(angle) * act_speed;
         }
-        if (mouse_ctrl == false && states[4] == true) {
+        if (mouse_ctrl == false && states[5] == true) {
             angle -= rot_vel;
             if (angle < -M_PI)
                 angle += 2 * M_PI;
         }
-        if (mouse_ctrl == false && states[5] == true) {
+        if (mouse_ctrl == false && states[6] == true) {
             angle += rot_vel;
             if (angle > M_PI)
                 angle -= 2 * M_PI;
@@ -212,7 +245,7 @@ int main(int argc, char** argv) {
         if (states[7] == true) {
             break;
         }
-        if (edge_down == true) {
+        if (trigger.back() > 0) {
             printf("Bag time reset.\n");
             bag_time_sum = 0.0;
         }

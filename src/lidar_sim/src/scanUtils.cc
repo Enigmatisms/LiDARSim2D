@@ -99,3 +99,47 @@ void makeScan(
     cnt++;
 }
 
+// trans 以及 speed 都是小车坐标系的(因为是IMU嘛)
+void makeImuMsg(
+    const Eigen::Vector2d& speed,
+    std::string frame_id,
+    double now_ang,
+    sensor_msgs::Imu& msg,
+    Eigen::Vector2d vel_var,
+    Eigen::Vector2d ang_var
+) {
+    static int cnt = 0;
+    static Eigen::Vector2d last_vel = Eigen::Vector2d::Zero(), last_acc = Eigen::Vector2d::Zero();
+    static double last_ang = 0.0, last_ang_vel = 0.0;
+    static ros::Time last_stamp = ros::Time::now();
+    msg.header.frame_id = cnt;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = frame_id;
+
+    msg.angular_velocity_covariance[0] = ang_var(0);
+    msg.angular_velocity_covariance[4] = ang_var(1);
+
+    msg.linear_acceleration_covariance[0] = vel_var(0);
+    msg.linear_acceleration_covariance[4] = vel_var(1);
+    const double duration = (msg.header.stamp - last_stamp).toSec();
+    Eigen::Vector2d acc = Eigen::Vector2d::Zero();
+    double ang_vel = 0.0;
+    if (cnt > 0) {
+        Eigen::Vector2d this_vel = speed / duration;
+        this_vel = 0.8 * speed + 0.2 * last_vel;
+        acc = (this_vel - last_vel) / duration;
+        acc = 0.8 * acc + 0.2 * last_acc;
+        last_acc = acc;
+        last_vel = this_vel;
+        ang_vel = (now_ang - last_ang) / duration;
+        ang_vel = 0.95 * ang_vel + 0.05 * last_ang_vel;
+        last_ang_vel = ang_vel;
+    }
+    msg.linear_acceleration.x = acc.x();
+    msg.linear_acceleration.y = acc.y();
+    msg.linear_acceleration.z = 0.0;
+    msg.angular_velocity.x = 0.0;
+    msg.angular_velocity.y = 0.0;
+    msg.angular_velocity.z = ang_vel;
+    cnt++;
+}

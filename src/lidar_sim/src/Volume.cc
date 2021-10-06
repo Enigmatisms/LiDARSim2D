@@ -33,9 +33,9 @@ void Volume::prettier(cv::Mat& src, const Eigen::Vector2d& obs) const {
     );
 }
 
-
 void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::Vector2d obs, cv::Mat& src) {
     objs.clear();
+    /// TODO: 可以优化
     std::vector<std::vector<Eigen::Vector2d>> obstcs;
     for (const Obstacle& obstacle: _obstcs) {            // 构建objects
         obstcs.emplace_back();

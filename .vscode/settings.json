@@ -1,4 +1,22 @@
 {
+    "python.linting.pylintArgs": ["--load-plugins", "pylint_django"],
+    "python.pythonPath": "/usr/bin/python3.6",
+    "[cpp]": {
+        "editor.quickSuggestions": true
+    },
+    "[c]": {
+        "editor.quickSuggestions": true
+    },
+    "C_Cpp.default.includePath": [
+        "${OpenCV_INCLUDE_DIRS}",
+        "${workspaceFolder}/include",
+        "/home/sentinel/opencv-4.5.1/include",
+        "/usr/include/suitesparse",
+	    "${workspaceFolder}/src/armor/include",
+        "/usr/include/eigen3",
+        "/usr/local/cuda-10.1/include"
+    ],
+    "C_Cpp.default.browse.databaseFilename": "${workspaceFolder}/.vscode/.browse.c_cpp.db",
     "files.associations": {
         "cctype": "cpp",
         "clocale": "cpp",
@@ -70,6 +88,12 @@
         "geometry": "cpp",
         "matrixfunctions": "cpp",
         "polynomials": "cpp",
-        "core": "cpp"
-    }
+        "*.cu": "cpp",
+        "core": "cpp",
+        "*.cuh": "cpp",
+        "forward_list": "cpp",
+        "slist": "cpp",
+        "variant": "cpp"
+    },
+    "git.ignoreLimitWarning": true
 }

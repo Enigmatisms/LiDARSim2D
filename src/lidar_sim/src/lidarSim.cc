@@ -16,10 +16,6 @@ void LidarSim::scan(
     const std::vector<std::vector<cv::Point>>& obstacles,
     Eigen::Vector2d obs, std::vector<double>& range, cv::Mat& src, double angle
 ) {
-    cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
-    cv::rectangle(src, floors, cv::Scalar(40, 40, 40), -1);
-    cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
-
     std::vector<double> act_range;
     act_range.resize(full_num, -1.0);
     Volume act_vol;
@@ -27,6 +23,7 @@ void LidarSim::scan(
     act_vol.calculateVisualSpace(obstacles, obs, src);
     act_vol.visualizeVisualSpace(obstacles, obs, src);
     act_vol.getValidEdges(act_egs);
+    angle += rng.uniform(-0.005, 0.005);
     double pos_angle = angle;
     if (pos_angle < 0.0)
         pos_angle += 2 * M_PI;
@@ -69,7 +66,7 @@ void LidarSim::edgeIntersect(const Edge& eg, const Eigen::Vector2d& obs, std::ve
 void LidarSim::visualizeRay(const std::vector<double>& range, const Eigen::Vector2d& obs, cv::Mat& dst, double now_ang) const {
     const cv::Point cv_obs(obs.x(), obs.y());
     for (int i = 0; i < sparse_ray_num; i++) {
-        double angle = sparse_min + static_cast<double>(i) * sparse_incre + now_ang;
+        double angle = sparse_min + static_cast<double>(i) * sparse_incre + now_ang + 2.0 * angle_incre;
         Eigen::Vector2d ray = range[i] * Eigen::Vector2d(cos(angle), sin(angle)) + obs;
         cv::Point ray_end(ray.x(), ray.y());
         cv::line(dst, cv_obs, ray_end, cv::Scalar(0, 0, 255), 1);

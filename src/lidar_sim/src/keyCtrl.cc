@@ -2,8 +2,8 @@
 #include "keyCtrl.hpp"
 
 const std::unordered_map<int, int> mapping = {
-    {458778, 0}, {458756, 1}, {458774, 2}, {458759, 3}, {458770, 4}, {458771, 5}, {458773, 6}, {458793, 7},
-}; // w a s d z x r [esc]
+    {458778, 0}, {458756, 1}, {458774, 2}, {458759, 3}, {458773, 4}, {458770, 5}, {458771, 6}, {458793, 7},
+}; // w a s d r o p [esc]
 
 KeyCtrl::KeyCtrl(std::string dev_name, std::atomic_char& stat): status(stat) {
     constexpr char name[13] = "K_MEDIUMRAW";

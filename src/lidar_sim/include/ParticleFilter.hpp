@@ -1,11 +1,19 @@
 #pragma once
 #include <vector>
 #include "Volume.hpp"
+#define CALC_TIME
 
 class ParticleFilter {
 public:
     ParticleFilter(const cv::Mat& occ, double _angle_incre, int pnum);
-    ~ParticleFilter() {}
+    ~ParticleFilter() {
+        #ifdef CALC_TIME
+        for (int i = 0; i < 5; i++) {
+            double avg_time = time_sum[i] / cnt_sum[i];
+            printf("avg_time: %lf ms, avg_fps: %lf\n", avg_time, 1000.0 / avg_time);
+        }   
+        #endif
+    }
 public:
     void particleInitialize(const cv::Mat& src);
 
@@ -40,4 +48,8 @@ private:
     const double angle_incre;
     std::vector<Eigen::Vector2d> particles;
     cv::RNG rng;
+    #ifdef CALC_TIME
+        std::array<double, 5> time_sum;
+        std::array<double, 5> cnt_sum;
+    #endif // CALC_TIME
 };

@@ -28,7 +28,10 @@ int main(int argc, char** argv) {
     std::vector<std::vector<cv::Point>> obstacles;
     std::string name = nh.param<std::string>("/filter/map_name", "standard");
     int speed = nh.param<int>("/filter/speed", 3);
-    mapLoad("../maps/" + name + ".txt", obstacles);
+    std::string pack_path = getPackagePath();
+    printf("Package prefix: %s\n", pack_path.c_str());
+    mapLoad(pack_path + "/../../maps/" + name + ".txt", obstacles);
+    printf("Map loaded.\n");
     src.create(cv::Size(1200, 900), CV_8UC3);
     cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, floors, cv::Scalar(40, 40, 40), -1);

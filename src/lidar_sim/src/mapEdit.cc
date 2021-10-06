@@ -33,7 +33,9 @@ void extraTask(const std::array<cv::Point, 2>& task, cv::Mat& src, int mode_id) 
 void mapLoad(std::string path, std::vector<std::vector<cv::Point>>& obstacles) {
     std::ifstream file(path, std::ios::in);
     if (!file) {
+        system("pwd");
         std::string error = "map of '" + path + "' does not exist.";
+        std::cerr << error << std::endl;
         throw error.c_str();
     }
     std::string s;
@@ -64,11 +66,17 @@ void mapSave(const std::vector<std::vector<cv::Point>>& obstacles, std::string p
     file.close();
 }
 
-void plotSpeedInfo(cv::Mat& src, double speed) {
-    cv::rectangle(src, cv::Rect(900, 5, 104, 20), cv::Scalar(50, 50, 50), -1);
-    int length = int(100 * (speed - 1.0));
-    cv::rectangle(src, cv::Rect(902, 7, length, 16), cv::Scalar(0, 255, 0), -1);
-    std::string str = "speed";
-    cv::putText(src, str.c_str(), cv::Point(1010, 15),
-					cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(120, 120, 120));
+void plotSpeedInfo(cv::Mat& src, double trans_vel, double act_vel) {
+    cv::rectangle(src, cv::Rect(700, 5, 104, 20), cv::Scalar(50, 50, 50), -1);
+    int length = int(100 * (trans_vel - 1.0));
+    cv::rectangle(src, cv::Rect(702, 7, length, 16), cv::Scalar(0, 255, 0), -1);
+    std::string str = "set speed";
+    cv::putText(src, str.c_str(), cv::Point(810, 15),
+					cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(150, 150, 150));
+    cv::rectangle(src, cv::Rect(960, 5, 104, 20), cv::Scalar(50, 50, 50), -1);
+    length = int(50 * (act_vel - 0.0));
+    cv::rectangle(src, cv::Rect(962, 7, length, 16), cv::Scalar(0, 255, 255), -1);
+    str = "act speed";
+    cv::putText(src, str.c_str(), cv::Point(1070, 15),
+					cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(150, 150, 150));
 }

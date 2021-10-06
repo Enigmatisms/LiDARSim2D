@@ -14,6 +14,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_broadcaster.h>
+#include <sensor_msgs/Imu.h>
 
 extern double K_P;
 extern double K_I;
@@ -43,6 +44,15 @@ void sendTransform(Eigen::Vector3d p, std::string frame_id, std::string child_fr
 void sendStampedTranform(const tf::StampedTransform& _tf);
 
 double pidAngle(const Eigen::Vector2d& orient, const Eigen::Vector2d& obs, double now);
+
+void makeImuMsg(
+    const Eigen::Vector2d& speed,
+    std::string frame_id,
+    double now_ang,
+    sensor_msgs::Imu& msg,
+    Eigen::Vector2d vel_var = Eigen::Vector2d::Zero(),
+    Eigen::Vector2d ang_var = Eigen::Vector2d::Zero()
+);
 
 class TicToc {
 private:
