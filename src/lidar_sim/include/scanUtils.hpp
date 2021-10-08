@@ -19,7 +19,6 @@
 extern double K_P;
 extern double K_I;
 extern double K_D;
-extern Eigen::Vector3d __pose__;
 
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg);
 
@@ -35,8 +34,8 @@ void makeScan(
 /// @brief 2D Odometry with noise
 /// @param noise_level the first elem of this var is the noise level in translation, the second is for rotation
 void makePerturbedOdom(
-    Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
-    Eigen::Vector2d noise_level, std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
+    double duration, std::string frame_id, std::string child_id
 );
 
 void sendTransform(Eigen::Vector3d p, std::string frame_id, std::string child_frame_id);
@@ -54,7 +53,7 @@ std::pair<double, double> makeImuMsg(
     Eigen::Vector2d ang_var
 );
 
-void makeImuMsg(
+double makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,

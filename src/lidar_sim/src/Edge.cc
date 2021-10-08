@@ -20,7 +20,7 @@ int Edge::rotatedBinarySearch(double angle) const{
     int s = 0, e = static_cast<int>(size()) - 1, m = static_cast<int>((s + e) / 2);
     double start_angle = front().z(), mid_angle = at(m).z();
     if (front().z() < back().z())
-            return binarySearch(std::make_pair(0, e), angle);
+        return binarySearch(std::make_pair(0, e), angle);
     while (s < e) {
         if (mid_angle > start_angle) {
             s = m + 1;

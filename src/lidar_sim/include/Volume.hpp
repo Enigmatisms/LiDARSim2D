@@ -13,6 +13,8 @@ public:
     ~Volume() {}
 public:
     void calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::Vector2d obs, cv::Mat& src);
+
+    void calculateVisualSpace(const std::vector<std::vector<Eigen::Vector2d>>& _obstcs, Eigen::Vector2d obs, cv::Mat& src);
     
     void visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst) const;
 

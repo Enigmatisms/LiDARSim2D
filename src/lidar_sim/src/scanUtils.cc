@@ -4,7 +4,6 @@
 double K_P = 0.2;
 double K_I = 0.0001;
 double K_D = 0.001;
-Eigen::Vector3d __pose__;
 
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg) {
     geometry_msgs::TransformStamped geo_msg;
@@ -23,18 +22,27 @@ void makeTransform(Eigen::Vector3d p, std::string frame_id, std::string child_fr
 }
 
 void makePerturbedOdom(
-    Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
-    Eigen::Vector2d noise_level, std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
+    double duration, std::string frame_id, std::string child_id
 ) {
     /// @note since the input delta_p is in the map frame, no transformation is needed.
     static int cnt = 0;
+    static Eigen::Vector3d __pose__ = Eigen::Vector3d::Zero();
     static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
     static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
     static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
-    delta_p(0) = delta_p(0) * 0.02 + trans_noise(engine);
-    delta_p(1) = delta_p(1) * 0.02 + trans_noise(engine);
+    static double last_angle_vel = 0.0;
+    delta_p(0) = delta_p(0) + trans_noise(engine);
+    delta_p(1) = delta_p(1) + trans_noise(engine);
+    const double angle = __pose__.z() + delta_p(2);
     delta_p(2) += rot_noise(engine);
-    __pose__ = __pose__ + delta_p;
+    Eigen::Matrix2d R;
+    R << cos(angle), -sin(angle), sin(angle), cos(angle);
+    Eigen::Vector2d translation = delta_p.block<2, 1>(0, 0);
+    translation = R * translation;
+    Eigen::Vector3d true_delta;
+    true_delta << translation, delta_p(2);
+    __pose__ += true_delta;
     odom.header.frame_id = frame_id;
     odom.header.seq = cnt;
     odom.header.stamp = ros::Time::now();
@@ -42,11 +50,27 @@ void makePerturbedOdom(
     odom.pose.pose.position.x = __pose__.x();
     odom.pose.pose.position.y = __pose__.y();
     odom.pose.pose.position.z = 0.0;
-    Eigen::Quaterniond qt(Eigen::AngleAxisd(__pose__.z(), Eigen::Vector3d::UnitZ()));
+    const Eigen::Quaterniond qt(Eigen::AngleAxisd(__pose__.z(), Eigen::Vector3d::UnitZ()));
     odom.pose.pose.orientation.w = qt.w();
     odom.pose.pose.orientation.x = qt.x();
     odom.pose.pose.orientation.y = qt.y();
     odom.pose.pose.orientation.z = qt.z();
+    for (int i = 0; i < 2; i++)
+        odom.pose.covariance[7 * i] = std::pow(noise_level(0), 2);
+    odom.pose.covariance.back() = std::pow(noise_level(1), 2);
+    if (cnt > 5) {
+        double angle_vel = delta_p(2) / duration;
+        odom.twist.twist.linear.x = (delta_p(0) / duration) + trans_noise(engine);
+        odom.twist.twist.linear.y = (delta_p(1) / duration) + trans_noise(engine);
+        odom.twist.twist.linear.y = 0.0;
+        odom.twist.twist.angular.x = 0.0;
+        odom.twist.twist.angular.y = 0.0;
+        odom.twist.twist.angular.z = 0.95 * angle_vel + 0.05 * last_angle_vel;
+        last_angle_vel = odom.twist.twist.angular.z;
+        for (int i = 0; i < 2; i++)
+            odom.twist.covariance[7 * i] = std::pow(noise_level(2), 2);
+        odom.twist.covariance.back() = std::pow(noise_level(3), 2);
+    }
     cnt++;
 }
 
@@ -159,7 +183,7 @@ std::pair<double, double> makeImuMsg(
     return std::make_pair(duration, duration_raw);
 }
 
-void makeImuMsg(
+double makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
@@ -169,4 +193,5 @@ void makeImuMsg(
     const auto& [duration, raw_du] = makeImuMsg(speed, frame_id, now_ang, msg, Eigen::Vector2d::Zero(), Eigen::Vector2d::Zero());
     if (file != nullptr)
         (*file) << msg.linear_acceleration.x << "," << msg.linear_acceleration.y << "," << duration << "," << raw_du << std::endl;
+    return duration;
 }

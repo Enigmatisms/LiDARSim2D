@@ -33,31 +33,10 @@ void Volume::prettier(cv::Mat& src, const Eigen::Vector2d& obs) const {
     );
 }
 
-void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::Vector2d obs, cv::Mat& src) {
+void Volume::calculateVisualSpace(const std::vector<std::vector<Eigen::Vector2d>>& _obstcs, Eigen::Vector2d obs, cv::Mat& src) {
     objs.clear();
-    /// TODO: 可以优化
-    std::vector<std::vector<Eigen::Vector2d>> obstcs;
-    for (const Obstacle& obstacle: _obstcs) {            // 构建objects
-        obstcs.emplace_back();
-        for (const cv::Point& pt: obstacle)
-            obstcs.back().emplace_back(pt.x, pt.y);
-    }
-    // ================ add walls ================
-    obstcs.emplace_back();
-    for (const cv::Point& pt: north_wall)
-        obstcs.back().emplace_back(pt.x, pt.y); 
-    obstcs.emplace_back();
-    for (const cv::Point& pt: east_wall)
-        obstcs.back().emplace_back(pt.x, pt.y); 
-    obstcs.emplace_back();
-    for (const cv::Point& pt: south_wall)
-        obstcs.back().emplace_back(pt.x, pt.y); 
-    obstcs.emplace_back();
-    for (const cv::Point& pt: west_wall)
-        obstcs.back().emplace_back(pt.x, pt.y); 
-
     int obj_cnt = 0;
-    for (const std::vector<Eigen::Vector2d>& obstacle: obstcs) {            // 构建objects
+    for (const std::vector<Eigen::Vector2d>& obstacle: _obstcs) {            // 构建objects
         Object obj(obj_cnt);
         obj.intialize(obstacle, obs);
         objs.push_back(obj);
@@ -92,6 +71,29 @@ void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::V
         // simplePreVisualize(src, cv::Point(obs.x(), obs.y()));
     }
 }
+
+void Volume::calculateVisualSpace(const std::vector<Obstacle>& _obstcs, Eigen::Vector2d obs, cv::Mat& src) {
+    std::vector<std::vector<Eigen::Vector2d>> obstcs;
+    for (const Obstacle& obstacle: _obstcs) {            // 构建objects
+        obstcs.emplace_back();
+        for (const cv::Point& pt: obstacle)
+            obstcs.back().emplace_back(pt.x, pt.y);
+    }
+    // ================ add walls ================
+    obstcs.emplace_back();
+    for (const cv::Point& pt: north_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: east_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: south_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: west_wall)
+        obstcs.back().emplace_back(pt.x, pt.y);
+    calculateVisualSpace(obstcs, obs, src);
+}   
 
 void Volume::simplePreVisualize(cv::Mat& src, const cv::Point& obs) const {
     for (const Object& obj: objs) {

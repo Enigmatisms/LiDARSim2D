@@ -145,9 +145,10 @@ void Object::makePolygons4Render(Eigen::Vector2d obs, std::vector<std::vector<cv
 
 void Object::projectEdge2Edge(const Edge& src, const Eigen::Vector2d& obs, Edge& dst, HeapType& heap) {
     bool pop_back_flag = true;
-    Eigen::Vector2d fpt = src.front().block<2, 1>(0, 0) - obs, ept = src.back().block<2, 1>(0, 0) - obs;
-    double f_ang = src.front().z(), e_ang = src.back().z();
-    bool head_in_range = dst.angleInRange(f_ang), end_in_range = dst.angleInRange(e_ang), mid_in_range = true;
+    const Eigen::Vector2d fpt = src.front().block<2, 1>(0, 0) - obs, ept = src.back().block<2, 1>(0, 0) - obs;
+    const double f_ang = src.front().z(), e_ang = src.back().z();
+    const bool head_in_range = dst.angleInRange(f_ang), end_in_range = dst.angleInRange(e_ang);
+    bool mid_in_range = true;
     if (src.size() > 2) {
         size_t mid_id = src.size() / 2;
         mid_in_range = dst.angleInRange(src[mid_id].z());
@@ -195,9 +196,9 @@ void Object::projectEdge2Edge(const Edge& src, const Eigen::Vector2d& obs, Edge&
     int task_id = 0;
     for (const Eigen::Vector3d& task: tasks) {
         if (task_id > 0) pop_back_flag = false;
-        double angle = task.z();
-        Eigen::Vector2d beam = task.block<2, 1>(0, 0);
-        int id = dst.rotatedBinarySearch(angle);
+        const double angle = task.z();
+        const Eigen::Vector2d beam = task.block<2, 1>(0, 0);
+        const int id = dst.rotatedBinarySearch(angle);
         if (task_id == 0 && id <= 0) {
             LOG_ERROR_STREAM("Task is 0 and id <= 0");
             throw 0;
@@ -287,16 +288,15 @@ Eigen::Vector3d Object::getIntersection(
     const Eigen::Vector2d vec_line = p2 - p1;
     Eigen::Matrix2d A = Eigen::Matrix2d::Zero();
     A << -vec(1), vec(0), -vec_line(1), vec_line(0);
-    double b1 = Eigen::RowVector2d(-vec(1), vec(0)) * obs;
-    double b2 = Eigen::RowVector2d(-vec_line(1), vec_line(0)) * p1;
+    const double b1 = Eigen::RowVector2d(-vec(1), vec(0)) * obs;
+    const double b2 = Eigen::RowVector2d(-vec_line(1), vec_line(0)) * p1;
     const Eigen::Vector2d b(b1, b2);
-    double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
+    const double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     if (std::abs(det) < 1e-5)
         return _p1;
     const Eigen::Vector2d pt = A.inverse() * b, new_vec = pt - obs;
-    double angle = atan2(new_vec(1), new_vec(0));
     Eigen::Vector3d result;
-    result << pt, angle;
+    result << pt, atan2(new_vec(1), new_vec(0));
     return result;                   // 解交点
 }
 

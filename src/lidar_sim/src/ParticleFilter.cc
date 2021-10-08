@@ -3,6 +3,7 @@
 #include <opencv2/highgui.hpp>
 #include "ParticleFilter.hpp"
 #include "scanUtils.hpp"
+#include "consts.h"
 
 ParticleFilter::ParticleFilter(const cv::Mat& occ, double _angle_incre, int pnum): 
     occupancy(occ), point_num(pnum), angle_incre(_angle_incre), rng(0)
@@ -47,12 +48,32 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
     std::vector<double> weights, act_range;
     weights.resize(point_num, 0.0);
     act_range.resize(ray_num, -1.0);
+    std::vector<std::vector<Eigen::Vector2d>> obstcs;
+    for (const Obstacle& obstacle: obstacles) {            // 构建objects
+        obstcs.emplace_back();
+        for (const cv::Point& pt: obstacle)
+            obstcs.back().emplace_back(pt.x, pt.y);
+    }
+    // ================ add walls ================
+    obstcs.emplace_back();
+    for (const cv::Point& pt: north_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: east_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: south_wall)
+        obstcs.back().emplace_back(pt.x, pt.y); 
+    obstcs.emplace_back();
+    for (const cv::Point& pt: west_wall)
+        obstcs.back().emplace_back(pt.x, pt.y);
+    
     Volume act_vol;
     std::vector<Edge> act_egs;
     #ifdef CALC_TIME
     timer.tic();
     #endif // CALC_TIME
-    act_vol.calculateVisualSpace(obstacles, act_obs, src);
+    act_vol.calculateVisualSpace(obstcs, act_obs, src);
     #ifdef CALC_TIME
     time_sum[0] += timer.toc();
     #endif // CALC_TIME
@@ -78,15 +99,13 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
     cnt_sum[1] += 1.0;
     #endif // CALC_TIME
     // visualizeRay(act_range, act_obs, src);
-    #ifndef CALC_TIME
-    #pragma omp parallel for num_threads(8)
-    #endif  // CALC_TIME
     
     #ifdef CALC_TIME
     TicToc big_time;
     big_time.tic();
     #endif // CALC_TIME
-
+    std::vector<std::vector<Edge>> all_eg(particles.size());
+    #pragma omp parallel for num_threads(8)
     for (size_t i = 0; i < particles.size(); i++) {            // 计算weight
         const Eigen::Vector2d& pt = particles[i];
         int col = static_cast<int>(pt.x()), row = static_cast<int>(pt.y());
@@ -95,28 +114,33 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
             continue;
         }
         Volume vol;
-        std::vector<Edge> edegs;
-        std::vector<double> range;
-        range.resize(ray_num, -1.0);
-        vol.calculateVisualSpace(obstacles, pt, src);
+        std::vector<Edge>& edegs = all_eg[i];
+        vol.calculateVisualSpace(obstcs, pt, src);
         vol.getValidEdges(edegs);
-        for (const Edge& eg: edegs)
-            edgeIntersect(eg, pt, range);
-        scanPerturb(range);
-
-        #ifdef CALC_TIME
-        timer.tic();
-        #endif // CALC_TIME
-        double weight = probaComputation(act_range, range);
-        #ifdef CALC_TIME
-        time_sum[3] += timer.toc();
-        cnt_sum[3] += 1.0;
-        #endif // CALC_TIME
-        weights[i] = weight;
+        
     }
     #ifdef CALC_TIME
     time_sum[2] += big_time.toc();
     cnt_sum[2] += 1.0;
+    #endif // CALC_TIME
+     #ifdef CALC_TIME
+    timer.tic();
+    #endif // CALC_TIME
+    // #pragma omp parallel for num_threads(8)
+    for (size_t i = 0; i < particles.size(); i++) {
+        const Eigen::Vector2d& pt = particles[i];
+        std::vector<double> range(ray_num, -1.0);
+        std::vector<Edge>& edegs = all_eg[i];
+        // 此处可以复制出来单独实现
+        for (const Edge& eg: edegs)
+            edgeIntersect(eg, pt, range);
+        scanPerturb(range);
+        double weight = probaComputation(act_range, range);
+        weights[i] = weight;
+    }
+    #ifdef CALC_TIME
+    time_sum[3] += timer.toc();
+    cnt_sum[3] += 1.0;
     #endif // CALC_TIME
 
     #ifdef CALC_TIME

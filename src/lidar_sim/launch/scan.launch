@@ -4,35 +4,38 @@
   <node pkg="lidar_sim" type="scan" name="scan" output="screen">
     <!-- controller settings -->
 
-    <param name="enable_mouse_ctrl" value="false" type="bool"/>
+    <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
 
-    <param name="trans_speed" value="1.5" type="double"/>
-    <param name="rot_vel" value="2" type="double"/>
-    <param name="init_x" value="367.0" type="double"/>
-    <param name="init_y" value="769.0" type="double"/>
-    <param name="kp" value="0.04" type="double"/>
-    <param name="ki" value="0.0001" type="double"/>
-    <param name="kd" value="0.001" type="double"/>
-
+    <param name="trans_speed" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
+    <param name="rot_vel" value="2" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
+    <param name="init_x" value="367.0" type="double"/>              <!-- Initial position x -->
+    <param name="init_y" value="769.0" type="double"/>              <!-- Initial position y -->
+    <param name="kp" value="0.04" type="double"/>                   <!-- Mouse control PID coefficient -->
+    <param name="ki" value="0.0001" type="double"/>                 <!-- Mouse control PID coefficient -->
+    <param name="kd" value="0.001" type="double"/>                  <!-- Mouse control PID coefficient -->
+  
+    <!-- Keyboard event stream: name of the device -->
     <param name="dev_name" value="/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd" type="string"/>
 
     <!-- LiDAR settings -->
-
-    <param name="angle_min" value="-2.0" type="double"/>
-    <param name="angle_max" value="2.0" type="double"/>
-    <param name="angle_incre" value="0.0017453" type="double"/>
-    <param name="lidar_noise" value="0.03" type="double"/>
-    <param name="lidar_fps" value="25" type="double"/>
+    <param name="angle_min" value="-2.0" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="2.0" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_incre" value="0.0017453" type="double"/>     <!-- LiDAR angle increment -->
+    <param name="lidar_noise" value="0.03" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
+    <param name="lidar_fps" value="25" type="double"/>              <!-- LiDAR frame rate -->
 
     <!-- Odometry settings -->
-    <param name="translation_noise" value="0.04" type="double"/>
-    <param name="rotation_noise" value="0.0005" type="double"/>
+    <!-- Gaussian distribution sigma parameter -->
+    <param name="translation_noise" value="0.01" type="double"/>    <!-- odometry translation noise sigma -->
+    <param name="rotation_noise" value="0.001" type="double"/>      <!-- odometry rotation noise sigma -->
+    <param name="trans_vel_noise" value="0.075" type="double"/>     <!-- odometry translation velocity noise sigma -->
+    <param name="rot_vel_noise" value="0.02" type="double"/>        <!-- odometry rotation velocity noise sigma -->
 
     <!-- other settings -->
-    <param name="map_name" value="corridor" type="string"/>
-    <param name="bag_name" value="test" type="string"/>
-    <param name="skip_selection" value="false" type="bool"/>
-    <param name="direct_pub" value="true" type="bool"/>
-    <param name="imu_plot" value="true" type="bool"/>
+    <param name="map_name" value="corridor" type="string"/>         <!-- map to open -->
+    <param name="bag_name" value="test" type="string"/>             <!-- saved rosbag name -->
+    <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->
+    <param name="direct_pub" value="true" type="bool"/>             <!-- publish ros message directly -->
+    <param name="imu_plot" value="false" type="bool"/>              <!-- save imu output to file -->
   </node>
 </launch>

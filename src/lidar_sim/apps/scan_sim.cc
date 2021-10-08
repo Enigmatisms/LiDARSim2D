@@ -14,8 +14,8 @@
 #include "consts.h"
 
 cv::Mat src;
-Eigen::Vector2d obs, orient, translation, init_obs, total_trans;
-double angle = 0.0, angle_sum = 0.0;
+Eigen::Vector2d obs, orient, translation, init_obs;
+double angle = 0.0;
 double delta_angle = 0.0, trans_speed = 2.0, act_speed = 0.0;
 bool obs_set = false, mouse_ctrl = true, record_bag = false;
 
@@ -78,8 +78,12 @@ int main(int argc, char** argv) {
     double angle_max = nh.param<double>("/scan/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/scan/angle_incre", M_PI / 1800.0);
     double fps = nh.param<double>("/scan/lidar_fps", 20.0);
+
     double translation_noise = nh.param<double>("/scan/translation_noise", 0.08);
     double rotation_noise = nh.param<double>("/scan/rotation_noise", 0.01);
+    double trans_vel_noise = nh.param<double>("/scan/trans_vel_noise", 0.01);
+    double rot_vel_noise = nh.param<double>("/scan/rot_vel_noise", 0.01);
+
     double lidar_noise = nh.param<double>("/scan/lidar_noise", 0.02);
     bool skip_selection = nh.param<bool>("/scan/skip_selection", false);
     bool direct_pub = nh.param<bool>("/scan/direct_pub", false);
@@ -94,7 +98,7 @@ int main(int argc, char** argv) {
     K_P = nh.param<double>("/scan/kp", 0.2);
     K_I = nh.param<double>("/scan/ki", 0.0001);
     K_D = nh.param<double>("/scan/kd", 0.01);
-    const Eigen::Vector2d noise(translation_noise, rotation_noise);
+    const Eigen::Vector4d noise(translation_noise, rotation_noise, trans_vel_noise, rot_vel_noise);
 
     double msg_interval = 1000.0 / fps;         // ms
 
@@ -142,6 +146,8 @@ int main(int argc, char** argv) {
     std::atomic_char status = 0x00;
     KeyCtrl kc(dev_name, status);
     std::thread worker(&KeyCtrl::onKeyThread, &kc);
+    tf::StampedTransform odom_tf;
+    double init_angle = angle;
     worker.detach();
     while (true) {
         cv::imshow("disp", src);
@@ -156,6 +162,7 @@ int main(int argc, char** argv) {
         plotSpeedInfo(src, trans_speed, act_speed);
         time_sum += timer.toc();
         tf::StampedTransform stamped_tf;
+        makeTransform(Eigen::Vector3d(init_obs.x() * 0.02, init_obs.y() * 0.02, init_angle), "map", "odom", odom_tf);
         makeTransform(Eigen::Vector3d(obs.x() * 0.02, obs.y() * 0.02, angle), "map", "scan", stamped_tf);
         Eigen::Vector2d tmp = obs + translation;
         if (collision_box.at<uchar>(int(tmp.y()), int(tmp.x())) > 0) {
@@ -166,8 +173,7 @@ int main(int argc, char** argv) {
             collided = true;
         }
         if (record_bag == true) {
-            total_trans += translation;
-            angle_sum += delta_angle;
+            sendStampedTranform(odom_tf);
             sendStampedTranform(stamped_tf);
             bag_time_sum += timer.toc();
             cv::circle(src, cv::Point(15, 15), 10, cv::Scalar(0, 0, 255), -1);
@@ -186,26 +192,18 @@ int main(int argc, char** argv) {
         }
         if (bag_time_sum > msg_interval && record_bag == true) {
             bag_time_sum = 0.0;
-            nav_msgs::Odometry odom;
             sensor_msgs::LaserScan scan;
             tf::tfMessage tf_msg;
-            Eigen::Vector3d delta_pose;
-            delta_pose << total_trans, angle_sum;
             makeScan(range, angles, scan, "scan", msg_interval / 1e3);
             stampedTransform2TFMsg(stamped_tf, tf_msg);
-            makePerturbedOdom(delta_pose, odom, noise, "map", "scan");
             bag.write("scan", ros::Time::now(), scan);
             bag.write("sim_tf", ros::Time::now(), tf_msg);
-            bag.write("sim_odom", ros::Time::now(), odom);
-            if (direct_pub == true) {
-                odom_pub.publish(odom);
+            if (direct_pub == true)
                 scan_pub.publish(scan);
-            }
-            total_trans.setZero();
-            angle_sum = 0.0;
         }
         if (direct_pub == true) {       // IMU will be published unconditionally
             sensor_msgs::Imu imu_msg;
+            nav_msgs::Odometry odom;
             double act_trans_x = 0.0, act_trans_y = 0.0;
             if (states[0] == true)
                 act_trans_x = act_speed;
@@ -218,10 +216,16 @@ int main(int argc, char** argv) {
             if (collided)
                 act_trans_x = act_trans_y = 0.0;
             Eigen::Vector2d imu_trans(act_trans_x * 0.02, act_trans_y * 0.02);
-            makeImuMsg(imu_trans, "scan", angle, imu_msg, file);
+            Eigen::Vector3d delta_pose;
+            delta_pose << imu_trans, delta_angle;
+            double duration = makeImuMsg(imu_trans, "scan", angle, imu_msg, file);
+            makePerturbedOdom(noise, delta_pose, odom, duration, "odom", "scan");
             imu_pub.publish(imu_msg);
-            if (record_bag == true)
+            odom_pub.publish(odom);
+            if (record_bag == true) {
+                bag.write("sim_odom", ros::Time::now(), odom);
                 bag.write("sim_imu", ros::Time::now(), imu_msg);
+            }
         }
         translation.setZero();
         if (states[0] == true) {
@@ -242,11 +246,13 @@ int main(int argc, char** argv) {
         }
         if (mouse_ctrl == false && states[5] == true) {
             angle -= rot_vel;
+            delta_angle = -rot_vel;
             if (angle < -M_PI)
                 angle += 2 * M_PI;
         }
         if (mouse_ctrl == false && states[6] == true) {
             angle += rot_vel;
+            delta_angle = rot_vel;
             if (angle > M_PI)
                 angle -= 2 * M_PI;
         }
