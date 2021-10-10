@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+SET(COMPILE_CUDA True)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -34,6 +35,21 @@ find_package(OpenMP)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+find_package(Boost REQUIRED COMPONENTS system)
+
+if (COMPILE_CUDA)
+  find_package(CUDA REQUIRED)
+  set(
+      CUDA_NVCC_FLAGS
+      ${CUDA_NVCC_FLAGS};
+      -O3 --use_fast_math
+      -gencode=arch=compute_61,code=sm_61
+      -lcudadevrt -lcudart
+      --expt-relaxed-constexpr
+  )
+  add_compile_options(-Wno-deprecated-declarations)
 endif()
 
 catkin_package(
@@ -98,3 +114,18 @@ install(TARGETS filter scan editor test_key
 install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
+
+if (COMPILE_CUDA)
+  aux_source_directory(cuda/ CUDA_SRC)
+  cuda_add_executable(cuda_test
+    apps/cudaTest.cu
+    src/consts.cc
+    ${CUDA_SRC}
+  )
+
+  target_link_libraries(cuda_test
+    ${OpenCV_LIBS}
+    ${Boost_LIBRARIES}
+    /usr/local/cuda-10.1/targets/x86_64-linux/lib/libcudadevrt.a
+  )
+endif()

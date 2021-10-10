@@ -8,9 +8,13 @@
 struct Obsp {
     float x = 0.0;
     float y = 0.0;
-    Obsp(): x(0.0), y(0.0) {}
-    Obsp(float x, float y): x(x), y(y) {}
-    Obsp operator-(const Obsp& obs) const {
+    __host__ __device__ Obsp(): x(0.0), y(0.0) {}
+    __host__ __device__ Obsp(const Obsp* const ptr) {
+        x = ptr->x;
+        y = ptr->y;
+    }
+    __host__ __device__ Obsp(float x, float y): x(x), y(y) {}
+    __host__ __device__ Obsp operator-(const Obsp& obs) const {
         return Obsp(x - obs.x, y - obs.y);
     }
 };
@@ -31,7 +35,7 @@ __device__ void initialize(const float* const segments, const Obsp* const obs, i
  */
 __device__ void singleSegZbuffer(
     const Obsp& p1, const Obsp& p2, const Obsp* const ptcls, 
-    const int s_id, const int e_id, const double ang_incre, int* range
+    const int s_id, const int e_id, const int range_num, const double ang_incre, int* range
 );
 
 /// 输入原始的segment
@@ -40,5 +44,5 @@ __global__ void particleFilter(
     const float* const raw_segs,
     const float* const ref, float* weights,
     const int s_id, const int e_id, const double ang_incre,
-    int range_num
+    const int range_num, const bool single_flag = false
 );
