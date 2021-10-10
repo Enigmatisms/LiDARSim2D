@@ -8,12 +8,13 @@
 const cv::Rect __walls(0, 0, 1200, 900);
 const cv::Rect __floors(30, 30, 1140, 840);
 constexpr int ALIGN_CHECK = 0x03;
-__constant__ float raw_segs[2048];
+constexpr double M_2PI = 2 * M_PI;
 
 CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum): 
     occupancy(occ), point_num(pnum), angle_min(angles(0)), angle_max(angles(1)), angle_incre(angles(2)), rng(0)
 {
-    ray_num = std::round(2 * M_PI / angle_incre);
+    ray_num = static_cast<int>(floor((angles(1) - angles(0)) / angle_incre));
+    full_ray_num = std::round(2 * M_PI / angle_incre);
     seg_num = 0;
     
     #ifdef CUDA_CALC_TIME
@@ -30,22 +31,28 @@ void CudaPF::particleInitialize(const cv::Mat& src) {
     while (pt_num < point_num) {
         const int x = rng.uniform(38, 1167);
         const int y = rng.uniform(38, 867);
+        const double a = rng.uniform(0.0, M_2PI);
         if (src.at<uchar>(y, x) > 0x00) {
-            particles.emplace_back(x, y);
-            cu_pts[pt_num].x = x;
-            cu_pts[pt_num].y = y;
+            particles.emplace_back(x, y, a);
             pt_num++;
         }
     }
+    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles.data(), pt_num * sizeof(Obsp), cudaMemcpyHostToDevice));
 }
 
-void CudaPF::particleUpdate(double mx, double my) {
-    for (Eigen::Vector2d& pt: particles) {
-        double _mx = mx, _my = my;
-        noisedMotion(_mx, _my);
-        pt(0) += _mx;
-        pt(1) += _my;
+void CudaPF::particleUpdate(double mx, double my, double angle) {
+    for (Obsp& pt: particles) {
+        double _mx = mx, _my = my, _a = angle;
+        noisedMotion(_mx, _my, _a);
+        pt.x += _mx;
+        pt.y += _my;
+        pt.a += _a;
+        if (pt.a < 0)
+            pt.a += M_2PI;
+        else if (pt.a > M_2PI)
+            pt.a -= M_2PI;
     }
+    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles.data(), particles.size() * sizeof(Obsp), cudaMemcpyHostToDevice));
 }
 
 __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obstacles) {
@@ -53,8 +60,6 @@ __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obsta
     CUDA_CHECK_RETURN(cudaMalloc((void **) &ref_range, ray_num * sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **) &cu_pts, point_num * sizeof(Obsp)));
     CUDA_CHECK_RETURN(cudaMalloc((void **) &obs, sizeof(Obsp)));
-    obs->x = 0.0;
-    obs->y = 0.0;
 
     // 首先计算segment
     std::vector<std::vector<Eigen::Vector2d>> obstcs;
@@ -111,14 +116,13 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
     cv::rectangle(src, __floors, cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
     // act_obs 的 z是角度，但是必须要0-2pi
-    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % ray_num, 
-    end_id = static_cast<int>(floor((angle_max + act_obs(2) + M_PI) / angle_incre)) % ray_num;
-    obs->x = act_obs.x();
-    obs->y = act_obs.y();
+    Obsp host_obs(act_obs(0), act_obs(1), (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z());
+    CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
     particleFilter <<< 1, seg_num, shared_to_allocate >>> (
-                        obs, raw_segs, NULL, ref_range, start_id, end_id, angle_incre, ray_num, true);
+                        obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, true);
+    CUDA_CHECK_RETURN(cudaDeviceSynchronize());
     particleFilter <<< point_num, seg_num, shared_to_allocate >>> (
-                        cu_pts, raw_segs, ref_range, weights, start_id, end_id, angle_incre, ray_num, false);
+                        cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, false);
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
     std::vector<float> weight_vec(point_num);
     CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyHostToDevice));
@@ -137,7 +141,7 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
 
 /// @ref implementation from Thrun: Probabilistic Robotics
 void CudaPF::importanceResampler(const std::vector<float>& weights) {
-    std::vector<Eigen::Vector2d> tmp;
+    std::vector<Obsp> tmp;
     std::vector<int> tmp_ids;
     double dpoint_num = static_cast<double>(point_num);
     double r = rng.uniform(0.0, 1.0 / dpoint_num);
@@ -157,4 +161,29 @@ void CudaPF::importanceResampler(const std::vector<float>& weights) {
 void CudaPF::scanPerturb(std::vector<float>& range) {
     for (float& val: range)
         val += rng.gaussian(7);
+}
+
+void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src) {
+    cv::rectangle(src, cv::Rect(0, 0, 1200, 900), cv::Scalar(10, 10, 10), -1);
+    cv::rectangle(src, cv::Rect(30, 30, 1140, 840), cv::Scalar(40, 40, 40), -1);
+    cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
+    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num, 
+        end_id = (start_id + ray_num - 1) % full_ray_num;
+    Obsp host_obs(act_obs(0), act_obs(1), (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z());
+    CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
+    particleFilter <<< 1, seg_num, shared_to_allocate >>> (
+                        obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, true);
+    std::vector<float> weight_vec(point_num);
+    std::vector<float> range(ray_num, 0.0);
+    CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyHostToDevice));
+    
+    importanceResampler(weight_vec);                               // 重采样
+    const cv::Point cv_obs(act_obs.x(), act_obs.y());
+    for (int i = 0; i < ray_num; i++) {
+        double angle = static_cast<double>(i + start_id) * angle_incre - M_PI;
+        double rval = range[i];
+        cv::Point2d trans(rval * cos(angle), rval * sin(angle));
+        cv::Point lpt = cv_obs + cv::Point(trans.x, trans.y);
+        cv::line(src, cv_obs, lpt, cv::Scalar(0, 0, 255), 1);
+    }
 }

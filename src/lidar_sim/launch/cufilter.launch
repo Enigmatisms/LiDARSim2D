@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="lidar_sim" type="filter" name="filter" output="screen">
+  <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen">
     <param name="map_name" value="standard3" type="string"/>
     <param name="speed" value="4" type="int"/>
     <param name="rot_vel" value="2" type="double"/>

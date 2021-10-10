@@ -120,12 +120,14 @@ if (COMPILE_CUDA)
   cuda_add_executable(cuda_test
     apps/cudaTest.cu
     src/consts.cc
+    src/mapEdit.cc
     ${CUDA_SRC}
   )
 
   target_link_libraries(cuda_test
     ${OpenCV_LIBS}
     ${Boost_LIBRARIES}
+    ${catkin_LIBRARIES}
     /usr/local/cuda-10.1/targets/x86_64-linux/lib/libcudadevrt.a
   )
 endif()

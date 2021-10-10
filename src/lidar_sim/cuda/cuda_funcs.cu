@@ -11,12 +11,12 @@ __device__ __forceinline__ float orderedIntToFloat( int intVal ) {
     return __int_as_float( (intVal >= 0) ? intVal ^ 0xFFFFFFFF : intVal ^ 0x80000000);
 }
 
-__device__ void initialize(const float* const segments, const Obsp* const obs, int id, bool* flags) {
+__device__ void initialize(const float* const segments, const Eigen::Vector2d* const obs, int id, bool* flags) {
     const int base = 4 * id;
     const Eigen::Vector2d pt1(*(segments + base), *(segments + base + 1)), pt2(*(segments + base + 2), *(segments + base + 3));
     const Eigen::Vector2d norm(pt1.y() - pt2.y(), pt2.x() - pt1.x());
-    const Eigen::Vector2d ctr_vec = (pt1 + pt2) / 2.0 - Eigen::Vector2d(obs->x, obs->y);
-    if (ctr_vec.x() * norm.x() + ctr_vec.y() * norm.y() < 0.0)
+    const Eigen::Vector2d ctr_vec = (pt1 + pt2) / 2.0 - Eigen::Vector2d(obs->x(), obs->y());
+    if (ctr_vec.x() * norm.x() + ctr_vec.y() * norm.y() > 0.0)
         flags[id] = false;
     else flags[id] = true;
 }
@@ -33,37 +33,37 @@ template<bool singl>
 __device__ int getRangeOffset(const int& range_sid, const int& range_eid, const int& id, const int range_num) {
     if (singl == true)
         if (id <= range_eid)
-            return range_num - range_eid + id;
-    return id - range_sid;
+            return max(range_num - range_eid + id - 1, 0);
+    return min(id - range_sid, range_num - 1);
 }
 
-__device__ float getRange(const Obsp& p1, const Obsp& vec_line, const Eigen::Vector2d& obs_pt, const double angle) {
+__device__ float getRange(const Eigen::Vector2d& p1, const Eigen::Vector2d& vec_line, const Eigen::Vector2d& obs_pt, const double angle) {
     const Eigen::Vector2d vec(cos(angle), sin(angle));
     Eigen::Matrix2d A;
-    A << vec_line.x, vec_line.y, -vec(0), -vec(1);
-    const double b1 = -vec(1) * obs_pt.x() + vec(0) * obs_pt.y();
-    const double b2 = -vec_line.y * p1.x + vec_line.x * p1.y;;
+    A << vec_line(0), vec_line(1), -vec(0), -vec(1);
+    const double b1 = -vec(1) * obs_pt(0) + vec(0) * obs_pt(1);
+    const double b2 = -vec_line(1) * p1(0) + vec_line(0) * p1(1);
     const Eigen::Vector2d b(b1, b2);
     const double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     if (std::abs(det) < 1e-5) {
-        return (Eigen::Vector2d(p1.x, p1.y) - obs_pt).norm();
+        return (p1 - obs_pt).norm();
     }
+    A /= det;
     return (A * b - obs_pt).norm();
 }
 
 __device__ void singleSegZbuffer(
-    const Obsp& p1, const Obsp& p2, const Obsp* const ptcls,
+    const Eigen::Vector2d& p1, const Eigen::Vector2d& p2, const Obsp* const ptcls,
     const int s_id, const int e_id, const int range_num,
     const double ang_incre, int* range
 ) {
-    const Obsp obs(ptcls);
-    const Obsp ray1 = p1 - obs, ray2 = p2 - obs, vec_line = p2 - p1;
-    const double sang = atan2(ray1.y, ray1.x), eang = atan2(ray2.y, ray2.x);
-    const int id_s = static_cast<int>(floor((sang + M_PI) / ang_incre)),
+    const Eigen::Vector2d obs(ptcls->x, ptcls->y);
+    const Eigen::Vector2d ray1 = p1 - obs, ray2 = p2 - obs, vec_line = p2 - p1;
+    const double sang = atan2(ray1(1), ray1(0)), eang = atan2(ray2(1), ray2(0));
+    const int id_s = static_cast<int>(ceil((sang + M_PI) / ang_incre)),
         id_e = static_cast<int>(floor((eang + M_PI) / ang_incre));
     const int max_ray_num = round(2 * M_PI / ang_incre);
     bool not_int_range = false;
-    const Eigen::Vector2d obs_pt(obs.x, obs.y);
     const bool range_singl = (s_id > e_id), edge_singl = (id_s > id_e);
     if (range_singl) {          // 深度图范围角度奇异
         if (edge_singl == false) {      // 被投影边角度不奇异
@@ -87,11 +87,14 @@ __device__ void singleSegZbuffer(
                 else
                     if (isIdInRange<false>(s_id, e_id, i) == false) continue;
                 const double angle = ang_incre * static_cast<double>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs_pt, angle);
+                const float rval = getRange(p1, vec_line, obs, angle);
                 const int range_int  = floatToOrderedInt(rval);
                 int offset = 0;
                 if (range_singl) offset = getRangeOffset<true>(s_id, e_id, i, range_num);
                 else offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                if (offset >= range_num || offset < 0) {
+                    printf("Line 111, %d\n", offset);
+                }
                 int *pos = &range[offset];
                 atomicMin(pos, range_int);         // 原子压入
             }
@@ -101,11 +104,14 @@ __device__ void singleSegZbuffer(
                 else
                     if (isIdInRange<false>(s_id, e_id, i) == false) continue;
                 const double angle = ang_incre * static_cast<double>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs_pt, angle);
+                const float rval = getRange(p1, vec_line, obs, angle);
                 int range_int  = floatToOrderedInt(rval);
                 int offset = 0;
                 if (range_singl) offset = getRangeOffset<true>(s_id, e_id, i, range_num);
                 else offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                if (offset >= range_num || offset < 0) {
+                    printf("Line 112, %d\n", offset);
+                }
                 int *pos = &range[offset];
                 atomicMin(pos, range_int);         // 原子压入
             }
@@ -116,11 +122,14 @@ __device__ void singleSegZbuffer(
                 else
                     if (isIdInRange<false>(s_id, e_id, i) == false) continue;
                 const double angle = ang_incre * static_cast<double>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs_pt, angle);
+                const float rval = getRange(p1, vec_line, obs, angle);
                 const int range_int  = floatToOrderedInt(rval);
                 int offset = 0;
                 if (range_singl) offset = getRangeOffset<true>(s_id, e_id, i, range_num);
                 else offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                if (offset >= range_num || offset < 0) {
+                    printf("Line 113, %d\n", offset);
+                }
                 int *pos = &range[offset];
                 atomicMin(pos, range_int);         // 原子压入
             }
@@ -131,16 +140,22 @@ __device__ void singleSegZbuffer(
 /// 共享内存需要用在flags / range上
 __global__ void particleFilter(
     const Obsp* const ptcls,
-    const float* const raw_segs,
+    // const float* const raw_segs,
     const float* const ref, float* weights,
-    const int s_id, const int e_id, const double ang_incre,
-    const int range_num, const bool single_flag
+    const double ang_min, const double ang_incre, const int range_num, 
+    const int full_rnum, const bool single_flag
 ) {
+    
     extern __shared__ int range[];          //...一个数据类型分为了两个不同意义以及类型的块
     bool* flags = (bool*)(&range[range_num]);
     const int pid = blockIdx.x, sid = threadIdx.x;
-    initialize(raw_segs, ptcls + pid, sid, flags);
+    const Obsp* const obs_ptr = ptcls + pid;
+    const Eigen::Vector2d this_obs(obs_ptr->x, obs_ptr->y);
+    const double angle = obs_ptr->a;
+    initialize(raw_segs, &this_obs, sid, flags);
     __syncthreads();
+    const int s_id = static_cast<int>(ceil((ang_min + angle + M_PI) / ang_incre)) % full_rnum, 
+        e_id = (s_id + range_num - 1) % full_rnum;
     const int th_num = blockDim.x;
     for (int i = 0; i < 4; i++) {       // 初始化深度（一个大值）
         const int cur_i = sid + i * th_num;
@@ -150,25 +165,25 @@ __global__ void particleFilter(
     __syncthreads();
     if (flags[sid] == true) {           // warp divergence 1
         const float* const base = (raw_segs + 4 * sid);
-        Obsp p1(*(base), *(base + 1)), p2(*(base + 2), *(base + 3));
+        Eigen::Vector2d p1(*(base), *(base + 1)), p2(*(base + 2), *(base + 3));
         singleSegZbuffer(p1, p2, ptcls + pid, s_id, e_id, range_num, ang_incre, range);
     }
     __syncthreads();
-    // 每个线程需要继续参与计算
-    // 深度图计算完成之后，需要计算weight
-    /// 每个block可以得到自己particle的深度图
-    for (int i = 0; i < 4; i++) {       
-        const int cur_i = sid + i * th_num;
-        if (cur_i >= range_num) break;  // warp divergence 2
-        if (single_flag) {
-            weights[cur_i] = orderedIntToFloat(range[cur_i]);
-        } else {
-            float val = orderedIntToFloat(range[cur_i]);
-            float abs_diff = abs(ref[cur_i] - val);
-            float *pos = &weights[pid];
-            atomicAdd(pos, abs_diff);
-        }
-    }
-    __syncthreads();
+    // // 每个线程需要继续参与计算
+    // // 深度图计算完成之后，需要计算weight
+    // /// 每个block可以得到自己particle的深度图
+    // for (int i = 0; i < 4; i++) {       
+    //     const int cur_i = sid + i * th_num;
+    //     if (cur_i >= range_num) break;  // warp divergence 2
+    //     if (single_flag) {
+    //         weights[cur_i] = orderedIntToFloat(range[cur_i]);
+    //     } else {
+    //         float val = orderedIntToFloat(range[cur_i]);
+    //         float abs_diff = abs(ref[cur_i] - val);
+    //         float *pos = &weights[pid];
+    //         atomicAdd(pos, abs_diff);
+    //     }
+    // }
+    // __syncthreads();
     // 计算完每一个点的值
 }
