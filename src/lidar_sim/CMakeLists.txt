@@ -50,6 +50,7 @@ if (COMPILE_CUDA)
       --expt-relaxed-constexpr
   )
   add_compile_options(-Wno-deprecated-declarations)
+  SET(CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
 catkin_package(

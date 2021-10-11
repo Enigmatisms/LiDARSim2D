@@ -82,7 +82,6 @@ __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obsta
     for (const cv::Point& pt: west_wall)
         obstcs.back().emplace_back(pt.x, pt.y);
     seg_num = 0;
-    std::vector<float> host_seg;
     for (const std::vector<Eigen::Vector2d>& obst: obstcs) {
         for (size_t i = 1; i < obst.size(); i++) {
             const Eigen::Vector2d& p = obst[i - 1];
@@ -101,11 +100,12 @@ __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obsta
         host_seg.push_back(q.y());
         seg_num ++;
     }
-    CUDA_CHECK_RETURN(cudaMemcpyToSymbol(raw_segs, host_seg.data(), sizeof(float) * host_seg.size()));
+    copyRawSegs(host_seg.data(), sizeof(float) * host_seg.size());
     shared_to_allocate = sizeof(float) * ray_num + sizeof(bool) * seg_num;
     const int check_result = (shared_to_allocate & ALIGN_CHECK);
     if (check_result > 0)
         shared_to_allocate = shared_to_allocate + 4 - check_result;
+    printf("Host segnum: %lu, first two: %f, %f\n", host_seg.size(), host_seg[0], host_seg[1]);
     // 分配4的整数个字节 才能保证初始float数组的完整性
 }
 
@@ -125,7 +125,7 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
                         cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, false);
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
     std::vector<float> weight_vec(point_num);
-    CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyDeviceToHost));
     #pragma omp parallel for num_threads(8)
     for (int i = 0; i < point_num; i++) {
         weight_vec[i] /= static_cast<float>(point_num);
@@ -170,14 +170,37 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
     int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num, 
         end_id = (start_id + ray_num - 1) % full_ray_num;
     Obsp host_obs(act_obs(0), act_obs(1), (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z());
+    // bool* host_flag = new bool[seg_num];
+    // bool* flags;
+    // CUDA_CHECK_RETURN(cudaMalloc((void **) &flags, seg_num * sizeof(bool)));
+    // CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
+    // printf("Here1\n");
+    // initTest <<< 1, seg_num >>> (obs, flags);
+    // printf("Here2\n");
+    // CUDA_CHECK_RETURN(cudaMemcpy(host_flag, flags, sizeof(bool) * seg_num, cudaMemcpyDeviceToHost));
+    // printf("Here3\n");
+    // for (size_t i = 0; i < size_t(seg_num); i++) {
+    //     if (host_flag[i] == true) {
+    //         const size_t base = 4 * i;
+    //         cv::Point p1(host_seg[base], host_seg[base + 1]);
+    //         cv::Point p2(host_seg[base + 2], host_seg[base + 3]);
+    //         cv::line(src, p1, p2, cv::Scalar(0, 255, 0), 2);
+    //     }
+    // }
+    // printf("Here4\n");
+    // cv::circle(src, cv::Point(act_obs.x(), act_obs.y()), 3, cv::Scalar(0, 0, 255), -1);
+    // CUDA_CHECK_RETURN(cudaFree(flags));
+    // delete [] host_flag;
+
     CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
+    printf("Here1\n");
     particleFilter <<< 1, seg_num, shared_to_allocate >>> (
                         obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, true);
-    std::vector<float> weight_vec(point_num);
+    printf("Here2\n");
     std::vector<float> range(ray_num, 0.0);
-    CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyHostToDevice));
-    
-    importanceResampler(weight_vec);                               // 重采样
+    CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyDeviceToHost));
+    printf("Here3\n");
+    // importanceResampler(weight_vec);                               // 重采样
     const cv::Point cv_obs(act_obs.x(), act_obs.y());
     for (int i = 0; i < ray_num; i++) {
         double angle = static_cast<double>(i + start_id) * angle_incre - M_PI;
@@ -186,4 +209,5 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
         cv::Point lpt = cv_obs + cv::Point(trans.x, trans.y);
         cv::line(src, cv_obs, lpt, cv::Scalar(0, 0, 255), 1);
     }
+    printf("Here4\n");
 }

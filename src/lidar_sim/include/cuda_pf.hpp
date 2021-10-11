@@ -2,18 +2,8 @@
 #include "cuda_funcs.h"
 #include <vector>
 #include <opencv2/core.hpp>
+#include "cuda_err_check.hpp"
 #define CUDA_CALC_TIME
-
-__host__ static void CheckCudaErrorAux (const char *, unsigned, const char *, cudaError_t);
-#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
-
-__host__ static void CheckCudaErrorAux (const char *file, unsigned line, const char *statement, cudaError_t err) {
-	if (err == cudaSuccess)
-		return;
-	std::cout << statement<<" returned " << cudaGetErrorString(err) << "("<<err<< ") at "<<file<<":"<<line <<
-			std::endl;
-	exit (1);
-}
 
 class CudaPF {
 public:
@@ -69,6 +59,7 @@ private:
     Obsp* obs;
 
     std::vector<Obsp> particles;
+    std::vector<float> host_seg;
     cv::RNG rng;
     #ifdef CUDA_CALC_TIME
         std::array<double, 5> time_sum;

@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
     double angle_min = nh.param<double>("/cuda_test/angle_min", -M_PI / 2);
     double angle_max = nh.param<double>("/cuda_test/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/cuda_test/angle_incre", M_PI / 360);
+    obs_set = nh.param<double>("/cuda_test/resquire_init_pos", true);
 
     std::string pack_path = getPackagePath();
     printf("Package prefix: %s\n", pack_path.c_str());
@@ -54,7 +55,7 @@ int main(int argc, char** argv) {
     }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
     cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
     cv::setMouseCallback("disp", on_mouse, NULL);
-    obs = cv::Point(367, 769);
+    obs = cv::Point(385, 531);
     while (obs_set == false) {
         cv::imshow("disp", src);
         char key = cv::waitKey(10);
@@ -84,9 +85,11 @@ int main(int argc, char** argv) {
         if (render_flag == true) {
             start_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
             Eigen::Vector3d act_obs(obs.x, obs.y, angle);
-            cpf.particleUpdate(x_motion, y_motion, delta_angle);
-            cpf.filtering(obstacles, act_obs, src);
+            // cpf.particleUpdate(x_motion, y_motion, delta_angle);
+            // cpf.filtering(obstacles, act_obs, src);
+            std::cout << "Run:\n";
             cpf.singleDebugDemo(obstacles, act_obs, src);
+            std::cout << "Done\n";
             end_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
             x_motion = 0;
             y_motion = 0;
@@ -133,12 +136,14 @@ int main(int argc, char** argv) {
                 delta_angle = -rot_vel;
                 if (angle < -M_PI)
                     angle += 2 * M_PI;
+                break;
             }
             case 'p': {
                 angle += rot_vel;
                 delta_angle = +rot_vel;
                 if (angle > M_PI)
                     angle -= 2 * M_PI;
+                break;
             }
             case 27: break_flag = true;
         }

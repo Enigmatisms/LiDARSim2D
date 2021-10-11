@@ -23,6 +23,29 @@ const std::array<cv::Point, 9> west_wall = {
     cv::Point(30, 555), cv::Point(30, 450), cv::Point(30, 345),
     cv::Point(30, 240), cv::Point(30, 135), cv::Point(30, 30)
 };
+// const std::array<cv::Point, 11> north_wall = {   
+//     cv::Point(-1200, -1200), cv::Point(144, -1200), cv::Point(258, -1200), cv::Point(372, -1200),
+//     cv::Point(486, -1200), cv::Point(600, -1200), cv::Point(714, -1200), cv::Point(828, -1200),
+//     cv::Point(942, -1200), cv::Point(1056, -1200), cv::Point(2400, -1200)
+// };
+
+// const std::array<cv::Point, 9> east_wall = {
+//     cv::Point(2400, -1200), cv::Point(2400, 135), cv::Point(2400, 240),
+//     cv::Point(2400, 345), cv::Point(2400, 450), cv::Point(2400, 555),
+//     cv::Point(2400, 660), cv::Point(2400, 765), cv::Point(2400, 2100)
+// };       // 105
+
+// const std::array<cv::Point, 11> south_wall = {
+//     cv::Point(2400, 2100), cv::Point(1056, 2100), cv::Point(942, 2100), cv::Point(828, 2100),
+//     cv::Point(714, 2100), cv::Point(600, 2100), cv::Point(486, 2100), cv::Point(372, 2100),
+//     cv::Point(258, 2100), cv::Point(144, 2100), cv::Point(-1200, 2100)
+// };      // 114
+
+// const std::array<cv::Point, 9> west_wall = {
+//     cv::Point(-1200, 2100), cv::Point(-1200, 765), cv::Point(-1200, 660),
+//     cv::Point(-1200, 555), cv::Point(-1200, 450), cv::Point(-1200, 345),
+//     cv::Point(-1200, 240), cv::Point(-1200, 135), cv::Point(-1200, -1200)
+// };
 
 std::string getPackagePath() {
     char string[256] = "rospack find lidar_sim";

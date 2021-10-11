@@ -16,7 +16,7 @@ struct Obsp {
     __host__ __device__ Obsp(float x, float y, float a): x(x), y(y), a(a) {}
 };
 
-__constant__ float raw_segs[2048];
+__host__ void copyRawSegs(const float* const host_segs, size_t byte_num);
 
 /**
  * @brief GPU初始化，负责背面剔除（生成一个flag数组，block共享）
@@ -44,4 +44,10 @@ __global__ void particleFilter(
     const float* const ref, float* weights,
     const double ang_min, const double ang_incre, const int range_num, 
     const int full_rnum, const bool single_flag = false
+);
+
+//=============== DEBUG ==================
+__global__ void initTest(
+    const Obsp* const ptcls,
+    bool* flags
 );

@@ -77,7 +77,8 @@ int main(int argc, char** argv) {
     double angle_min = nh.param<double>("/scan/angle_min", -M_PI / 2);
     double angle_max = nh.param<double>("/scan/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/scan/angle_incre", M_PI / 1800.0);
-    double fps = nh.param<double>("/scan/lidar_fps", 20.0);
+    double lidar_fps = nh.param<double>("/scan/lidar_fps", 20.0);
+    double odom_fps = nh.param<double>("/scan/odom_fps", 40.0);
 
     double translation_noise = nh.param<double>("/scan/translation_noise", 0.08);
     double rotation_noise = nh.param<double>("/scan/rotation_noise", 0.01);
@@ -100,7 +101,8 @@ int main(int argc, char** argv) {
     K_D = nh.param<double>("/scan/kd", 0.01);
     const Eigen::Vector4d noise(translation_noise, rotation_noise, trans_vel_noise, rot_vel_noise);
 
-    double msg_interval = 1000.0 / fps;         // ms
+    const double scan_interval = 1000.0 / lidar_fps;         // ms
+    const double odom_interval = 1000.0 / odom_fps;         // ms
 
     std::string pack_path = getPackagePath();
     printf("Package prefix: %s\n", pack_path.c_str());
@@ -136,7 +138,7 @@ int main(int argc, char** argv) {
         }
     }
     init_obs = obs;
-    double time_cnt = 1.0, time_sum = 0.0, bag_time_sum = 0.0;
+    double time_cnt = 1.0, time_sum = 0.0, scan_time_sum = 0.0, odom_time_sum = 0.0;
     Eigen::Vector3d angles(angle_min, angle_max, angle_incre);
     LidarSim ls(angles, lidar_noise);
     std::vector<Eigen::Vector3d> gtt;       // ground truth tragectory
@@ -175,7 +177,8 @@ int main(int argc, char** argv) {
         if (record_bag == true) {
             sendStampedTranform(odom_tf);
             sendStampedTranform(stamped_tf);
-            bag_time_sum += timer.toc();
+            scan_time_sum += timer.toc();
+            odom_time_sum += timer.toc();
             cv::circle(src, cv::Point(15, 15), 10, cv::Scalar(0, 0, 255), -1);
         }
         time_cnt += 1.0;
@@ -190,18 +193,18 @@ int main(int argc, char** argv) {
             if (act_speed < 1e-5)
                 act_speed = 0.0;
         }
-        if (bag_time_sum > msg_interval && record_bag == true) {
-            bag_time_sum = 0.0;
+        if (scan_time_sum > scan_interval && record_bag == true) {
+            scan_time_sum = 0.0;
             sensor_msgs::LaserScan scan;
             tf::tfMessage tf_msg;
-            makeScan(range, angles, scan, "scan", msg_interval / 1e3);
+            makeScan(range, angles, scan, "scan", scan_interval / 1e3);
             stampedTransform2TFMsg(stamped_tf, tf_msg);
             bag.write("scan", ros::Time::now(), scan);
-            bag.write("sim_tf", ros::Time::now(), tf_msg);
+            // bag.write("sim_tf", ros::Time::now(), tf_msg);
             if (direct_pub == true)
                 scan_pub.publish(scan);
         }
-        if (direct_pub == true) {       // IMU will be published unconditionally
+        if (direct_pub == true && record_bag == true) {       // IMU will be published unconditionally
             sensor_msgs::Imu imu_msg;
             nav_msgs::Odometry odom;
             double act_trans_x = 0.0, act_trans_y = 0.0;
@@ -220,12 +223,15 @@ int main(int argc, char** argv) {
             delta_pose << imu_trans, delta_angle;
             double duration = makeImuMsg(imu_trans, "scan", angle, imu_msg, file);
             makePerturbedOdom(noise, delta_pose, odom, duration, "odom", "scan");
-            imu_pub.publish(imu_msg);
-            odom_pub.publish(odom);
-            if (record_bag == true) {
-                bag.write("sim_odom", ros::Time::now(), odom);
-                bag.write("sim_imu", ros::Time::now(), imu_msg);
+            if (odom_time_sum > odom_interval) {
+                odom_time_sum = 0.0;
+                odom_pub.publish(odom);
+                if (record_bag == true) {
+                    bag.write("sim_odom", ros::Time::now(), odom);
+                    // bag.write("sim_imu", ros::Time::now(), imu_msg);
+                }
             }
+            imu_pub.publish(imu_msg);
         }
         translation.setZero();
         if (states[0] == true) {
@@ -261,7 +267,7 @@ int main(int argc, char** argv) {
         }
         if (trigger.back() > 0) {
             printf("Bag time reset.\n");
-            bag_time_sum = 0.0;
+            scan_time_sum = 0.0;
         }
         if (mouse_ctrl == true) {
             delta_angle = pidAngle(orient, obs, angle);

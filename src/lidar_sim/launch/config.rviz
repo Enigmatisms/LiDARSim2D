@@ -104,7 +104,7 @@ Visualization Manager:
           Value: true
         Value: true
       Enabled: true
-      Keep: 0
+      Keep: 256
       Name: Odometry
       Position Tolerance: 0.10000000149011612
       Shape:
@@ -127,6 +127,8 @@ Visualization Manager:
         All Enabled: true
         map:
           Value: true
+        odom:
+          Value: true
         scan:
           Value: true
       Marker Scale: 1
@@ -136,6 +138,8 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
+          odom:
+            {}
           scan:
             {}
       Update Interval: 0
