@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         if (key == 27)
             return 0;
     }
-    ParticleFilter pf(occupancy, 2.0 * M_PI / 180.0, 2000);
+    ParticleFilter pf(occupancy, 2.0 * M_PI / 180.0, 27000);
     pf.particleInitialize(occupancy);
     bool render_flag = true;
     double time_cnt = 1.0, time_sum = 0.0;

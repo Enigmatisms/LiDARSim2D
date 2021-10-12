@@ -100,6 +100,6 @@ Eigen::Vector2d Edge::getRayIntersect(const Eigen::Vector3d& ray, const Eigen::V
     const Eigen::Vector2d b(b1, b2);
     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
     if (std::abs(det) < 1e-5)
-        return p1;
+        return p1 - obs;
     return A.inverse() * b - obs;
 }

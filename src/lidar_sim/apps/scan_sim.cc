@@ -66,7 +66,7 @@ void controlFlow(char stat) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "scan");
     ros::NodeHandle nh;
-    cv::setNumThreads(4);
+    cv::setNumThreads(2);
     std::vector<std::vector<cv::Point>> obstacles;
     std::string name = nh.param<std::string>("/scan/map_name", "standard");
     std::string dev_name = nh.param<std::string>("/scan/dev_name", "/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd");
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         char key = status;
         controlFlow(key);
         record_bag = bool(trigger.back()) ^ record_bag;
-        bool break_flag = false, collided = false;
+        bool collided = false;
         timer.tic();
         std::vector<double> range;
         ls.scan(obstacles, obs, range, src, angle);
@@ -277,8 +277,6 @@ int main(int argc, char** argv) {
             else if (angle < -M_PI)
                 angle += 2 * M_PI;
         }
-        if (break_flag == true)
-            break;
     }
     bag.close();
     if (imu_plot == true) {

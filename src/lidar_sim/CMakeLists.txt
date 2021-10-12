@@ -51,6 +51,13 @@ if (COMPILE_CUDA)
   )
   add_compile_options(-Wno-deprecated-declarations)
   SET(CUDA_SEPARABLE_COMPILATION ON)
+
+  find_package(Boost REQUIRED COMPONENTS
+    filesystem iostreams
+  )
+  if(NOT Boost_FOUND)
+     message(FATAL_ERROR "Boost not found.")
+  endif()
 endif()
 
 catkin_package(
@@ -122,8 +129,11 @@ if (COMPILE_CUDA)
     apps/cudaTest.cu
     src/consts.cc
     src/mapEdit.cc
+    src/keyCtrl.cc
     ${CUDA_SRC}
   )
+
+  set_property(TARGET cuda_test PROPERTY CXX_STANDARD 14)
 
   target_link_libraries(cuda_test
     ${OpenCV_LIBS}

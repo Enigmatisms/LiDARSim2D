@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
 <launch>
   <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen">
-    <param name="map_name" value="square" type="string"/>
-    <param name="speed" value="4" type="int"/>
+    <param name="map_name" value="standard3" type="string"/>
+    <param name="resample_freq" value="2" type="int"/>
+    <param name="point_num" value="1000" type="int"/>
+    <param name="trans_vel" value="3" type="double"/>
     <param name="rot_vel" value="2" type="double"/>
     <param name="angle_min" value="-1.5708" type="double"/>            <!-- LiDAR minimal angle -->
     <param name="angle_max" value="1.5708" type="double"/>             <!-- LiDAR maximal angle -->
     <param name="angle_incre" value="0.0087266" type="double"/>        <!-- LiDAR angle increment -->
-    <param name="resquire_init_pos" value="false" type="bool"/>
+    <param name="resquire_no_init_pos" value="false" type="bool"/>
   </node>
 </launch>
