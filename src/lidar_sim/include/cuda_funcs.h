@@ -15,6 +15,25 @@ struct Obsp {
     __host__ __device__ Obsp(float x, float y, float a): x(x), y(y), a(a) {}
 };
 
+struct Vec2f {
+    float x = 0.0;
+    float y = 0.0;
+    __device__ Vec2f(): x(0.0), y(0.0) {}
+    __device__ Vec2f(float x, float y): x(x), y(y) {}
+    __device__ __forceinline__ const Vec2f operator+(const Vec2f& v) const {
+        return Vec2f(x + v.x, y + v.y);
+    }
+    __device__ __forceinline__ const Vec2f operator-(const Vec2f& v) const {
+        return Vec2f(x - v.x, y - v.y);
+    }
+    __device__ __forceinline__ const Vec2f operator*(const float v) const {
+        return Vec2f(x * v, y * v);
+    }
+    __device__ __forceinline__ const float norm() const {
+        return sqrtf(x * x + y * y);
+    }
+};
+
 __host__ void copyRawSegs(const float* const host_segs, size_t byte_num);
 
 /**
@@ -41,7 +60,7 @@ __global__ void particleFilter(
     const Obsp* const ptcls,
     const float* const ref, float* weights,
     const float ang_min, const float ang_incre, const int range_num, 
-    const int full_rnum, const bool single_flag = false
+    const int full_rnum, const int offset, const bool single_flag = false
 );
 
 //=============== DEBUG ==================

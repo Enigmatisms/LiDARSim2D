@@ -3,7 +3,8 @@
 #include <sm_60_atomic_functions.h>
 
 constexpr int FLOAT_2048 = 0xc5000000;      // when convert to float directly, this is equal to 2048.0
-constexpr float _M_2PI = 2 * M_PI;
+constexpr float _M_PI = M_PI;
+constexpr float _M_2PI = 2 * _M_PI;
 __constant__ float raw_segs[2048];
 
 __host__ void copyRawSegs(const float* const host_segs, size_t byte_num) {
@@ -19,12 +20,12 @@ __device__ __forceinline__ float orderedIntToFloat( const int intVal ) {
     return __int_as_float( (intVal >= 0) ? intVal ^ 0xFFFFFFFF : intVal ^ 0x80000000);
 }
 
-__device__ void initialize(const float* const segments, const Eigen::Vector2f* const obs, int id, bool* flags) {
+__device__ void initialize(const float* const segments, const Vec2f* const obs, int id, bool* flags) {
     const float* ptr = segments + (id << 2);
-    const Eigen::Vector2f pt1(ptr[0], ptr[1]), pt2(ptr[2], ptr[3]);
-    const Eigen::Vector2f norm(pt1.y() - pt2.y(), pt2.x() - pt1.x());
-    const Eigen::Vector2f ctr_vec = (pt1 + pt2) * 0.5 - Eigen::Vector2f(obs->x(), obs->y());
-    if (ctr_vec.x() * norm.x() + ctr_vec.y() * norm.y() > 0.0) {
+    const Vec2f pt1(ptr[0], ptr[1]), pt2(ptr[2], ptr[3]);
+    const Vec2f norm(pt1.y - pt2.y, pt2.x - pt1.x);
+    const Vec2f ctr_vec = (pt1 + pt2) * 0.5 - Vec2f(obs->x, obs->y);
+    if (ctr_vec.x * norm.x + ctr_vec.y * norm.y > 0.0) {
         flags[id] = false;
     } else {
         flags[id] = true;
@@ -32,7 +33,7 @@ __device__ void initialize(const float* const segments, const Eigen::Vector2f* c
 }
 
 template<bool singl>
-__device__ bool isIdInRange(const int range_sid, const int range_eid, const int id) {
+__device__ __forceinline__ bool isIdInRange(const int range_sid, const int range_eid, const int id) {
     if (singl == true)
         return (id >= range_sid) || (id <= range_eid);
     else
@@ -40,42 +41,45 @@ __device__ bool isIdInRange(const int range_sid, const int range_eid, const int 
 }
 
 template<bool singl>
-__device__ int getRangeOffset(const int range_sid, const int range_eid, const int id, const int range_num) {
+__device__ __forceinline__ short getRangeOffset(const short range_sid, const short range_eid, const short id, const short range_num) {
     if (singl == true)
         if (id <= range_eid)
-            return max(range_num - range_eid + id - 1, 0);
-    return min(id - range_sid, range_num - 1);
+            return max(range_num - range_eid + id, 0);
+    return min(id - range_sid, range_num);
 }
 
-__device__ float getRange(const Eigen::Vector2f& p1, const Eigen::Vector2f& vec_line, const Eigen::Vector2f& obs_pt, const float angle) {
-    const Eigen::Vector2f vec(cos(angle), sin(angle));
-    Eigen::Matrix2f A;
-    A << vec_line(0), -vec(0), vec_line(1), -vec(1);
-    const float b1 = -vec(1) * obs_pt(0) + vec(0) * obs_pt(1);
-    const float b2 = -vec_line(1) * p1(0) + vec_line(0) * p1(1);
-    const Eigen::Vector2f b(b1, b2);
-    const float det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
-    if (abs(det) < 1e-5) {
+__device__ __forceinline__ float getRange(const Vec2f& p1, const Vec2f& vec_line, const Vec2f& obs_pt, const float angle, const float b2) {
+    // Eigen::Matrix2f A;
+    const float A00 = vec_line.x, A01 = -cosf(angle), A10 = vec_line.y, A11 = -sinf(angle);
+    // A << vec_line(0), -vec(0), vec_line(1), -vec(1);
+    const float b1 = A11 * obs_pt.x - A01 * obs_pt.x;
+    // const float b2 = -A10 * p1(0) + A00 * p1(1);
+    // const Vec2f b(b1, b2);
+    const float det = A00 * A11 - A01 * A10;
+    const float det_1 = 1.0f / det;
+    if (abs(det) < 1e-5f) {
         return (p1 - obs_pt).norm();
     }
-    A /= det;
-    return (A * b - obs_pt).norm();
+    // A /= det;
+    const Vec2f tmp(A00 * b1 + A01 * b2, A10 * b1 + A11 * b2);
+    return (tmp * det_1 - obs_pt).norm();
 }
 
 __device__ void singleSegZbuffer(
-    const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, const Obsp* const ptcls,
+    const Vec2f& p1, const Vec2f& p2, const Obsp* const ptcls,
     const int s_id, const int e_id, const int range_num,
     const float ang_incre, int* range
 ) {
-    const Eigen::Vector2f obs(ptcls->x, ptcls->y);
-    const Eigen::Vector2f ray1 = p1 - obs, ray2 = p2 - obs, vec_line = p2 - p1;
-    const float sang = atan2f(ray1(1), ray1(0)), eang = atan2f(ray2(1), ray2(0));
-    const int id_s = static_cast<int>(ceilf((sang + M_PI) / ang_incre)),
-        id_e = static_cast<int>(floorf((eang + M_PI) / ang_incre));
+    const Vec2f obs(ptcls->x, ptcls->y);
+    const Vec2f ray1 = p1 - obs, ray2 = p2 - obs, vec_line = p2 - p1;
+    const float sang = atan2f(ray1.y, ray1.x), eang = atan2f(ray2.y, ray2.x), b2 = -vec_line.y * p1.x + vec_line.x * p1.y;
+    const short id_s = static_cast<short>(ceilf((sang + _M_PI) / ang_incre)),
+        id_e = static_cast<short>(floorf((eang + _M_PI) / ang_incre));
     if (id_s == id_e + 1) {
         return;
     }
-    const int max_ray_num = roundf(_M_2PI / ang_incre);
+    const short max_ray_num = roundf(_M_2PI / ang_incre);
+    const short range_num_1 = range_num - 1;
     bool not_int_range = false;
     const bool range_singl = (s_id > e_id), edge_singl = (id_s > id_e);
     if (range_singl) {          // 深度图范围角度奇异
@@ -96,68 +100,76 @@ __device__ void singleSegZbuffer(
         }
     }
     if (not_int_range == false) {   // 不进行动态并行，线程不够用，一个SM才2048个线程
+        float angle = ang_incre * static_cast<float>(id_s) - _M_PI - ang_incre;
         if (edge_singl) {
-            for (int i = id_s; i < max_ray_num; i++) {
+            for (short i = id_s; i < max_ray_num; i++) {
                 if (range_singl) {       // 超出range范围的不计算
                     if (isIdInRange<true>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 } else {
                     if (isIdInRange<false>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 }
-                const float angle = ang_incre * static_cast<float>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs, angle);
+                angle += ang_incre;
+                const float rval = getRange(p1, vec_line, obs, angle, b2);
                 const int range_int  = floatToOrderedInt(rval);
-                int offset = 0;
+                short offset = 0;
                 if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
                 } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
                 }
                 atomicMin(range + offset, range_int);         // 原子压入
             }
-            for (int i = 0; i <= id_e; i++) {
+            angle = _M_PI - ang_incre;
+            for (short i = 0; i <= id_e; i++) {
                 if (range_singl) {       // 超出range范围的不计算
                     if (isIdInRange<true>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 } else {
                     if (isIdInRange<false>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 }
-                const float angle = ang_incre * static_cast<float>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs, angle);
+                angle += ang_incre;
+                const float rval = getRange(p1, vec_line, obs, angle, b2);
                 const int range_int  = floatToOrderedInt(rval);
-                int offset = 0;
+                short offset = 0;
                 if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
                 } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
                 }
                 atomicMin(range + offset, range_int);         // 原子压入
             }
         } else {
-            for (int i = id_s; i <= id_e; i++) {
+            for (short i = id_s; i <= id_e; i++) {
                 if (range_singl) {       // 超出range范围的不计算
                     if (isIdInRange<true>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 } else {
                     if (isIdInRange<false>(s_id, e_id, i) == false) {
+                        angle += ang_incre;
                         continue;
                     }
                 }
-                const float angle = ang_incre * static_cast<float>(i) - M_PI;
-                const float rval = getRange(p1, vec_line, obs, angle);
+                angle += ang_incre;
+                const float rval = getRange(p1, vec_line, obs, angle, b2);
                 const int range_int  = floatToOrderedInt(rval);
-                int offset = 0;
+                short offset = 0;
                 if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
                 } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num);
+                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
                 }
                 atomicMin(range + offset, range_int);         // 原子压入
             }
@@ -171,16 +183,16 @@ __global__ void particleFilter(
     // const float* const raw_segs,
     const float* const ref, float* weights,
     const float ang_min, const float ang_incre, const int range_num, 
-    const int full_rnum, const bool single_flag
+    const int full_rnum, const int offset, const bool single_flag
 ) {
     extern __shared__ int range[];          //...一个数据类型分为了两个不同意义以及类型的块
     bool* flags = (bool*)(&range[range_num]);
-    const int pid = blockIdx.x, sid = threadIdx.x;
+    const int pid = blockIdx.x + offset, sid = threadIdx.x;
     const Obsp* const obs_ptr = ptcls + pid;
-    const Eigen::Vector2f this_obs(obs_ptr->x, obs_ptr->y);
+    const Vec2f this_obs(obs_ptr->x, obs_ptr->y);
     const float angle = obs_ptr->a;
     initialize(raw_segs, &this_obs, sid, flags);
-    const int s_id = static_cast<int>(ceilf((ang_min + angle + M_PI) / ang_incre)) % full_rnum, 
+    const int s_id = static_cast<int>(ceilf((ang_min + angle + _M_PI) / ang_incre)) % full_rnum, 
         e_id = (s_id + range_num - 1) % full_rnum;
     const int th_num = blockDim.x;
     for (int i = 0; i < 16; i++) {       // 初始化深度（一个大值）
@@ -193,7 +205,7 @@ __global__ void particleFilter(
     __syncthreads();
     if (flags[sid] == true) {           // warp divergence 1
         const float* const base = (raw_segs + 4 * sid);
-        Eigen::Vector2f p1(*(base), *(base + 1)), p2(*(base + 2), *(base + 3));
+        Vec2f p1(*(base), *(base + 1)), p2(*(base + 2), *(base + 3));
         singleSegZbuffer(p1, p2, ptcls + pid, s_id, e_id, range_num, ang_incre, range);
     }
     __syncthreads();
@@ -221,7 +233,7 @@ __global__ void initTest(
 ) {
     const int pid = blockIdx.x, sid = threadIdx.x;
     const Obsp* const obs_ptr = ptcls + pid;
-    const Eigen::Vector2f this_obs(obs_ptr->x, obs_ptr->y);
+    const Vec2f this_obs(obs_ptr->x, obs_ptr->y);
     const float angle = obs_ptr->a;
     initialize(raw_segs, &this_obs, sid, flags);
     __syncthreads();

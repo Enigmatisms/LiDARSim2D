@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     }    
     cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
     cv::setMouseCallback("disp", on_mouse, NULL);
-    obs = Eigen::Vector2d(660, 94);
+    obs = Eigen::Vector2d(190, 515);
     while (obs_set == false) {
         cv::imshow("disp", src);
         char key = cv::waitKey(10);
@@ -101,27 +101,31 @@ int main(int argc, char** argv) {
         }
         switch(key) {
             case 'w': {
-                translation(0) = cos(angle) * trans_vel;
-                translation(1) = sin(angle) * trans_vel;
+                translation(0) = trans_vel;
+                translation(1) = 0;
                 render_flag = true;
+                delta_angle = 0.0;
                 break;
             }
             case 'a': {
-                translation(0) = sin(angle) * trans_vel;
-                translation(1) = -cos(angle) * trans_vel;
+                translation(0) = 0;
+                translation(1) = trans_vel;
                 render_flag = true;
+                delta_angle = 0.0;
                 break;
             }
             case 's': {
-                translation(0) = -cos(angle) * trans_vel;
-                translation(1) = -sin(angle) * trans_vel;
+                translation(0) = -trans_vel;
+                translation(1) = 0;
                 render_flag = true;
+                delta_angle = 0.0;
                 break;
             }
             case 'd': {
-                translation(0) = -sin(angle) * trans_vel;
-                translation(1) = cos(angle) * trans_vel;
+                translation(0) = 0;
+                translation(1) = -trans_vel;
                 render_flag = true;
+                delta_angle = 0.0;
                 break;
             }
             case 'p': {
@@ -145,16 +149,19 @@ int main(int argc, char** argv) {
         if (break_flag)
             break;
         if (render_flag == false) continue; 
-        Eigen::Vector2d tmp = obs + translation;
+        Eigen::Vector2d tmp = obs;
+        tmp(0) += cos(angle) * translation(0) + sin(angle) * translation(1);
+        tmp(1) += sin(angle) * translation(0) - cos(angle) * translation(1);
         if (occupancy.at<uchar>(int(tmp.y()), int(tmp.x())) > 0) {
             if (occupancy.at<uchar>(int(tmp.y()), int(obs.x())))
                 translation(1) = 0.0;
             if (occupancy.at<uchar>(int(obs.y()), int(tmp.x())))
                 translation(0) = 0.0;
         }
-        obs += translation;
         x_motion = translation(0);
         y_motion = translation(1);
+        obs(0) += cos(angle) * translation(0) + sin(angle) * translation(1);
+        obs(1) += sin(angle) * translation(0) - cos(angle) * translation(1);
         translation.setZero();
     }
     double mean_time = time_sum / time_cnt;

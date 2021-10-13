@@ -27,7 +27,6 @@ public:
 
     void singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src);
     void edgeDispDemo(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src);
-    void pfTestDeom(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src);
 
     void filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src);
 private:
@@ -52,6 +51,7 @@ private:
     int seg_num;
     size_t shared_to_allocate;
     const int point_num;
+    const int cascade_num;
     const double angle_min;
     const double angle_max;
     const double angle_incre;

@@ -24,7 +24,7 @@ void on_mouse(int event, int x,int y, int flags, void *ustc) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "filter");
     ros::NodeHandle nh;
-    cv::setNumThreads(4);
+    cv::setNumThreads(2);
     std::vector<std::vector<cv::Point>> obstacles;
     std::string name = nh.param<std::string>("/filter/map_name", "standard");
     int speed = nh.param<int>("/filter/speed", 3);
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         if (key == 27)
             return 0;
     }
-    ParticleFilter pf(occupancy, 2.0 * M_PI / 180.0, 27000);
+    ParticleFilter pf(occupancy, 2.0 * M_PI / 180.0, 12800);
     pf.particleInitialize(occupancy);
     bool render_flag = true;
     double time_cnt = 1.0, time_sum = 0.0;

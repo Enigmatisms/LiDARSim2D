@@ -78,7 +78,7 @@ void ParticleFilter::filtering(const std::vector<std::vector<cv::Point>>& obstac
     time_sum[0] += timer.toc();
     #endif // CALC_TIME
 
-    act_vol.visualizeVisualSpace(obstacles, act_obs, src);
+    // act_vol.visualizeVisualSpace(obstacles, act_obs, src);
     #ifdef CALC_TIME
     timer.tic();
     #endif // CALC_TIME

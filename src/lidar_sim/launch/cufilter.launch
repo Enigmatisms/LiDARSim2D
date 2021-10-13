@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <launch>
+  <!-- <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen" launch-prefix="nvprof -f -o /home/sentinel/prof.nvvp"> -->
   <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen">
     <param name="map_name" value="standard3" type="string"/>
-    <param name="resample_freq" value="2" type="int"/>
-    <param name="point_num" value="1000" type="int"/>
+    <param name="resample_freq" value="1" type="int"/>
+    <param name="point_num" value="1280" type="int"/>
     <param name="trans_vel" value="3" type="double"/>
     <param name="rot_vel" value="2" type="double"/>
     <param name="angle_min" value="-1.5708" type="double"/>            <!-- LiDAR minimal angle -->

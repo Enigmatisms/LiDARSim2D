@@ -2,6 +2,7 @@
 #include <opencv2/imgproc.hpp>
 // #include <opencv2/highgui.hpp>
 #include <gnuplot-iostream.h>
+#include <cuda_profiler_api.h>
 #include "scanUtils.hpp"
 #include "consts.h"
 #include "cuda_pf.hpp"
@@ -12,7 +13,7 @@ constexpr int ALIGN_CHECK = 0x03;
 constexpr double M_2PI = 2 * M_PI;
 
 CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum, int resample_freq): 
-    occupancy(occ), resample_freq(resample_freq), point_num(pnum * 72), 
+    occupancy(occ), resample_freq(resample_freq), point_num(pnum * 10), cascade_num(point_num >> 2),
     angle_min(angles(0)), angle_max(angles(1)), angle_incre(angles(2)), rng(0)
 {
     ray_num = static_cast<int>(floor((angles(1) - angles(0)) / angle_incre));
@@ -30,40 +31,33 @@ CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum, int
 void CudaPF::particleInitialize(const cv::Mat& src, Eigen::Vector3d act_obs) {
     int pt_num = 0;
     particles.clear();
-    // while (pt_num < point_num) { 
-    //     const int x = rng.uniform(38, 1167);
-    //     const int y = rng.uniform(38, 867);
-    //     const double a = rng.uniform(0.0, M_2PI);
-    //     if (src.at<uchar>(y, x) == 0x00) {
-    //         particles.emplace_back(x, y, a);
-    //         pt_num++;
-    //     }
-    // }
     while (pt_num < point_num) {
         const double x = rng.uniform(38, 1167);
         const double y = rng.uniform(38, 867);
         if (src.at<uchar>(y, x) > 0x00) continue;
-        for (int i = 0; i < 180; i++) {
-            const double dx = rng.gaussian(4);
-            const double dy = rng.gaussian(4);
-            particles.emplace_back(x + dx, y + dy, static_cast<double>(i) * M_PI / 36.0);
+        for (int i = 0; i < 10; i++) {
+            const double dx = rng.gaussian(2);
+            const double dy = rng.gaussian(2);
+            particles.emplace_back(x + dx, y + dy, static_cast<double>(i) * M_PI / 5.0);
             pt_num++;
         }
     }
-    // for (int i = 0; i < 10; i++) {
-    //     const int x = act_obs.x() + rng.uniform(-4, 4);
-    //     const int y = act_obs.y() + rng.uniform(-4, 4);
-    //     const double a = act_obs.z() + rng.uniform(-0.1, 0.1);
-    //     particles.emplace_back(x, y, a);
-    // }
     CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles.data(), pt_num * sizeof(Obsp), cudaMemcpyHostToDevice));
 }
 
 void CudaPF::particleUpdate(double mx, double my, double angle) {
     TicToc timer;
     timer.tic();
+    #pragma omp parallel for num_threads(8)
+    for (size_t i = 0; i < point_num; i++) {
+        Obsp& pt = particles[i];
+        const double cosa = cos(pt.a), sina = sin(pt.a);
+        pt.x += cosa * mx + sina * my;
+        pt.y += sina * mx - cosa * my;
+        pt.a += angle;
+    }
     for (Obsp& pt: particles) {
-        double _mx = mx, _my = my, _a = angle;
+        double _mx = 0, _my = 0, _a = 0;
         noisedMotion(_mx, _my, _a);
         pt.x += _mx;
         pt.y += _my;
@@ -149,13 +143,21 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
         timer.tic();
         CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
         particleFilter <<< 1, seg_num, shared_to_allocate >>> (
-                            obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, true);
-        particleFilter <<< point_num, seg_num, shared_to_allocate >>> (
-                            cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, false);
+                            obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, 0, true);
+        CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+        cudaStream_t streams[8];
+        for (int i = 0; i < 8; i++)
+            cudaStreamCreateWithFlags(&streams[i],cudaStreamNonBlocking);
+        // cudaProfilerStart();
+        for (int i = 0; i < cascade_num; i++)
+            particleFilter <<< 4, seg_num, shared_to_allocate, streams[i % 8]>>> (
+                                cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, i << 2, false);
+        // cudaProfilerStop();
+        for (int i = 0; i < 8; i++)
+            cudaStreamDestroy(streams[i]);
         CUDA_CHECK_RETURN(cudaDeviceSynchronize());
         time_sum[0] += timer.toc();
         cnt_sum[0] += 1.0;
-        timer.tic();
         CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyDeviceToHost));
 
         #pragma omp parallel for num_threads(8)
@@ -172,17 +174,15 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
             }
             weight_vec[i] = 1.0 / (weight_vec[i] + 1.0);
         }
-
+        timer.tic();
         float weight_sum = std::accumulate(weight_vec.begin(), weight_vec.end(), 0.0);
         for (float& val: weight_vec)                                  // 归一化形成概率
             val /= weight_sum;
-        gp1 << "plot" << gp1.file1d(weight_vec) << "with line title 'range1'\n" << std::endl;
-
         importanceResampler(weight_vec);                               // 重采样
+        sampler_cnt = (sampler_cnt + 1) % resample_freq;
+        time_sum[1] += timer.toc();
+        cnt_sum[1] += 1.0;
     }
-    sampler_cnt = (sampler_cnt + 1) % resample_freq;
-    time_sum[1] += timer.toc();
-    cnt_sum[1] += 1.0;
     visualizeParticles(weight_vec, src);
     cv::circle(src, cv::Point(act_obs.x(), act_obs.y()), 5, cv::Scalar(0, 255, 255), -1);
 }
@@ -201,11 +201,7 @@ void CudaPF::importanceResampler(const std::vector<float>& weights) {
             i++;
             c += weights[i];
         }
-        Obsp new_p;
-        new_p.x = particles[i].x + rng.gaussian(0.5);
-        new_p.y = particles[i].y + rng.gaussian(0.5);
-        new_p.a = particles[i].a + rng.gaussian(0.04);
-        tmp.push_back(new_p);
+        tmp.push_back(particles[i]);
     }
     particles.assign(tmp.begin(), tmp.end());
 }
@@ -283,25 +279,3 @@ void CudaPF::edgeDispDemo(const std::vector<std::vector<cv::Point>>& obstacles, 
     CUDA_CHECK_RETURN(cudaFree(flags));
     delete [] host_flag;
 }
-
-void CudaPF::pfTestDeom(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src) {
-    ;
-}
-
-
-    // #pragma omp parallel for num_threads(8)
-    // for (int i = 0; i < point_num; i++) {
-    //     const Obsp& pt = particles[i];
-    //     weight_vec[i] /= static_cast<float>(ray_num);
-    //     const int ptx = pt.x, pty = pt.y;
-    //     if (ptx < 0 || pty < 0 || ptx >= 1200 || pty >= 900) {
-    //         weight_vec[i] = 0.0;
-    //     } else {
-    //         if (occupancy.at<uchar>(pty, ptx) > 0x00) {
-    //             weight_vec[i] = 0.0;
-    //         } else {
-    //             weight_vec[i] = 1.0 / (weight_vec[i] + 1.0);
-    //         }
-    //     }
-    //     weight_vec[i] = 1.0 / (weight_vec[i] + 1.0);
-    // }
