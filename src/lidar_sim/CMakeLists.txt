@@ -48,6 +48,7 @@ if (COMPILE_CUDA)
       -gencode=arch=compute_61,code=sm_61
       -lcudadevrt -lcudart
       --expt-relaxed-constexpr
+      -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
   )
   add_compile_options(-Wno-deprecated-declarations)
   SET(CUDA_SEPARABLE_COMPILATION ON)

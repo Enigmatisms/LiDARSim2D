@@ -232,8 +232,7 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
     cv::rectangle(src, cv::Rect(30, 30, 1140, 840), cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
     act_obs(2) = (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z();
-    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num, 
-        end_id = (start_id + ray_num - 1) % full_ray_num;
+    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num;
     Obsp host_obs(act_obs(0), act_obs(1), act_obs(2));
     TicToc timer;
     timer.tic();
@@ -243,7 +242,6 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
     std::vector<float> range(ray_num, 0.0);
     std::cout << "Time consumption:" << timer.toc() << std::endl;
     CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyDeviceToHost));
-    // importanceResampler(weight_vec);                               // 重采样
     const cv::Point cv_obs(act_obs.x(), act_obs.y());
     for (int i = 0; i < ray_num; i++) {
         double angle = static_cast<double>(i + start_id) * angle_incre - M_PI;
@@ -252,30 +250,4 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
         cv::Point lpt = cv_obs + cv::Point(trans.x, trans.y);
         cv::line(src, cv_obs, lpt, cv::Scalar(0, 0, 255), 1);
     }
-}
-
-void CudaPF::edgeDispDemo(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src) {
-        cv::rectangle(src, cv::Rect(0, 0, 1200, 900), cv::Scalar(10, 10, 10), -1);
-    cv::rectangle(src, cv::Rect(30, 30, 1140, 840), cv::Scalar(40, 40, 40), -1);
-    cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
-    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num, 
-        end_id = (start_id + ray_num - 1) % full_ray_num;
-    Obsp host_obs(act_obs(0), act_obs(1), (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z());
-    bool* host_flag = new bool[seg_num];
-    bool* flags;
-    CUDA_CHECK_RETURN(cudaMalloc((void **) &flags, seg_num * sizeof(bool)));
-    CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
-    initTest <<< 1, seg_num >>> (obs, flags);
-    CUDA_CHECK_RETURN(cudaMemcpy(host_flag, flags, sizeof(bool) * seg_num, cudaMemcpyDeviceToHost));
-    for (size_t i = 0; i < size_t(seg_num); i++) {
-        if (host_flag[i] == true) {
-            const size_t base = 4 * i;
-            cv::Point p1(host_seg[base], host_seg[base + 1]);
-            cv::Point p2(host_seg[base + 2], host_seg[base + 3]);
-            cv::line(src, p1, p2, cv::Scalar(0, 255, 0), 2);
-        }
-    }
-    cv::circle(src, cv::Point(act_obs.x(), act_obs.y()), 3, cv::Scalar(0, 0, 255), -1);
-    CUDA_CHECK_RETURN(cudaFree(flags));
-    delete [] host_flag;
 }

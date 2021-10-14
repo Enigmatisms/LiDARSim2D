@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <vector>
 #include <Eigen/Core>
 #include <cuda_runtime.h>
@@ -20,16 +21,16 @@ struct Vec2f {
     float y = 0.0;
     __device__ Vec2f(): x(0.0), y(0.0) {}
     __device__ Vec2f(float x, float y): x(x), y(y) {}
-    __device__ __forceinline__ const Vec2f operator+(const Vec2f& v) const {
+    __device__ __forceinline__ Vec2f operator+(const Vec2f& v) const {
         return Vec2f(x + v.x, y + v.y);
     }
-    __device__ __forceinline__ const Vec2f operator-(const Vec2f& v) const {
+    __device__ __forceinline__ Vec2f operator-(const Vec2f& v) const {
         return Vec2f(x - v.x, y - v.y);
     }
-    __device__ __forceinline__ const Vec2f operator*(const float v) const {
+    __device__ __forceinline__ Vec2f operator*(const float v) const {
         return Vec2f(x * v, y * v);
     }
-    __device__ __forceinline__ const float norm() const {
+    __device__ __forceinline__ float norm() const {
         return sqrtf(x * x + y * y);
     }
 };
@@ -43,7 +44,7 @@ __host__ void copyRawSegs(const float* const host_segs, size_t byte_num);
  * @param segments constant memory片段信息
  * @param flags 共享内存flags, x, y是观测点位置
  */
-__device__ void initialize(const float* const segments, const Eigen::Vector2f* const obs, int id, bool* flags);
+__device__ void initialize(const float* const segments, const Vec2f* const obs, short id, bool* flags);
 
 /**
  * @brief 并行的z buffer, 渲染深度图
@@ -51,8 +52,8 @@ __device__ void initialize(const float* const segments, const Eigen::Vector2f* c
  * @param range 是共享内存的range，只有Z buffer全部计算完（并且转换为int） 才可以开始覆盖
  */
 __device__ void singleSegZbuffer(
-    const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, const Obsp* const ptcls, 
-    const int s_id, const int e_id, const int range_num, const float ang_incre, int* range
+    const Vec2f& p1, const Vec2f& p2, const Obsp* const ptcls, 
+    const short s_id, const short e_id, const int range_num, const float ang_incre, int* range
 );
 
 /// 输入原始的segment
@@ -61,10 +62,4 @@ __global__ void particleFilter(
     const float* const ref, float* weights,
     const float ang_min, const float ang_incre, const int range_num, 
     const int full_rnum, const int offset, const bool single_flag = false
-);
-
-//=============== DEBUG ==================
-__global__ void initTest(
-    const Obsp* const ptcls,
-    bool* flags
 );

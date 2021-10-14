@@ -20,7 +20,7 @@ __device__ __forceinline__ float orderedIntToFloat( const int intVal ) {
     return __int_as_float( (intVal >= 0) ? intVal ^ 0xFFFFFFFF : intVal ^ 0x80000000);
 }
 
-__device__ void initialize(const float* const segments, const Vec2f* const obs, int id, bool* flags) {
+__device__ __forceinline__ void initialize(const float* const segments, const Vec2f* const obs, short id, bool* flags) {
     const float* ptr = segments + (id << 2);
     const Vec2f pt1(ptr[0], ptr[1]), pt2(ptr[2], ptr[3]);
     const Vec2f norm(pt1.y - pt2.y, pt2.x - pt1.x);
@@ -33,41 +33,38 @@ __device__ void initialize(const float* const segments, const Vec2f* const obs, 
 }
 
 template<bool singl>
-__device__ __forceinline__ bool isIdInRange(const int range_sid, const int range_eid, const int id) {
+__device__ __forceinline__ bool isIdInRange(const short range_sid, const short range_eid, const short id) {
     if (singl == true)
         return (id >= range_sid) || (id <= range_eid);
     else
         return (id >= range_sid) && (id <= range_eid);
 }
 
-template<bool singl>
-__device__ __forceinline__ short getRangeOffset(const short range_sid, const short range_eid, const short id, const short range_num) {
-    if (singl == true)
-        if (id <= range_eid)
-            return max(range_num - range_eid + id, 0);
+__device__ __forceinline__ short getRangeOffset(const short range_sid, const short id, const short range_num) {
+    return min(id - range_sid, range_num);
+}
+
+__device__ __forceinline__ short getRangeOffsetSingl(const short range_sid, const short range_eid, const short id, const short range_num) {
+    if (id <= range_eid)
+        return max(range_num - range_eid + id, 0);
     return min(id - range_sid, range_num);
 }
 
 __device__ __forceinline__ float getRange(const Vec2f& p1, const Vec2f& vec_line, const Vec2f& obs_pt, const float angle, const float b2) {
-    // Eigen::Matrix2f A;
     const float A00 = vec_line.x, A01 = -cosf(angle), A10 = vec_line.y, A11 = -sinf(angle);
-    // A << vec_line(0), -vec(0), vec_line(1), -vec(1);
     const float b1 = A11 * obs_pt.x - A01 * obs_pt.x;
-    // const float b2 = -A10 * p1(0) + A00 * p1(1);
-    // const Vec2f b(b1, b2);
     const float det = A00 * A11 - A01 * A10;
-    const float det_1 = 1.0f / det;
     if (abs(det) < 1e-5f) {
         return (p1 - obs_pt).norm();
     }
-    // A /= det;
+    const float det_1 = 1.0f / det;
     const Vec2f tmp(A00 * b1 + A01 * b2, A10 * b1 + A11 * b2);
     return (tmp * det_1 - obs_pt).norm();
 }
 
 __device__ void singleSegZbuffer(
     const Vec2f& p1, const Vec2f& p2, const Obsp* const ptcls,
-    const int s_id, const int e_id, const int range_num,
+    const short s_id, const short e_id, const int range_num,
     const float ang_incre, int* range
 ) {
     const Vec2f obs(ptcls->x, ptcls->y);
@@ -80,99 +77,96 @@ __device__ void singleSegZbuffer(
     }
     const short max_ray_num = roundf(_M_2PI / ang_incre);
     const short range_num_1 = range_num - 1;
-    bool not_int_range = false;
     const bool range_singl = (s_id > e_id), edge_singl = (id_s > id_e);
     if (range_singl) {          // 深度图范围角度奇异
         if (edge_singl == false) {      // 被投影边角度不奇异
             if (id_e < s_id && id_s > e_id) {
-                not_int_range = true;
+                return;
             }
         }                       // 奇异必定有重合部分
     } else {
         if (edge_singl) {      // 被投影边角度奇异
             if (id_e > e_id && id_s < s_id) {
-                not_int_range = true;
+                return;
             }
         } else {
             if (id_s > e_id || id_e < s_id) {
-                not_int_range = true;
+                return;
             }
         }
     }
-    if (not_int_range == false) {   // 不进行动态并行，线程不够用，一个SM才2048个线程
-        float angle = ang_incre * static_cast<float>(id_s) - _M_PI - ang_incre;
-        if (edge_singl) {
-            for (short i = id_s; i < max_ray_num; i++) {
-                if (range_singl) {       // 超出range范围的不计算
-                    if (isIdInRange<true>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
-                } else {
-                    if (isIdInRange<false>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
+    float angle = ang_incre * static_cast<float>(id_s) - _M_PI;
+    if (edge_singl) {
+        for (short i = id_s; i < max_ray_num; i++) {
+            if (range_singl) {       // 超出range范围的不计算
+                if (isIdInRange<true>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
                 }
-                angle += ang_incre;
-                const float rval = getRange(p1, vec_line, obs, angle, b2);
-                const int range_int  = floatToOrderedInt(rval);
-                short offset = 0;
-                if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
-                } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
+            } else {
+                if (isIdInRange<false>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
                 }
-                atomicMin(range + offset, range_int);         // 原子压入
             }
-            angle = _M_PI - ang_incre;
-            for (short i = 0; i <= id_e; i++) {
-                if (range_singl) {       // 超出range范围的不计算
-                    if (isIdInRange<true>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
-                } else {
-                    if (isIdInRange<false>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
-                }
-                angle += ang_incre;
-                const float rval = getRange(p1, vec_line, obs, angle, b2);
-                const int range_int  = floatToOrderedInt(rval);
-                short offset = 0;
-                if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
-                } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
-                }
-                atomicMin(range + offset, range_int);         // 原子压入
+            const float rval = getRange(p1, vec_line, obs, angle, b2);
+            const int range_int = floatToOrderedInt(rval);
+            short offset = 0;
+            if (range_singl) {
+                offset = getRangeOffsetSingl(s_id, e_id, i, range_num_1);
+            } else {
+                offset = getRangeOffset(s_id, i, range_num_1);
             }
-        } else {
-            for (short i = id_s; i <= id_e; i++) {
-                if (range_singl) {       // 超出range范围的不计算
-                    if (isIdInRange<true>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
-                } else {
-                    if (isIdInRange<false>(s_id, e_id, i) == false) {
-                        angle += ang_incre;
-                        continue;
-                    }
+            atomicMin(range + offset, range_int);         // 原子压入
+            angle += ang_incre;
+        }
+        angle = _M_PI;
+        for (short i = 0; i <= id_e; i++) {
+            if (range_singl) {       // 超出range范围的不计算
+                if (isIdInRange<true>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
                 }
-                angle += ang_incre;
-                const float rval = getRange(p1, vec_line, obs, angle, b2);
-                const int range_int  = floatToOrderedInt(rval);
-                short offset = 0;
-                if (range_singl) {
-                    offset = getRangeOffset<true>(s_id, e_id, i, range_num_1);
-                } else {
-                    offset = getRangeOffset<false>(s_id, e_id, i, range_num_1);
+            } else {
+                if (isIdInRange<false>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
                 }
-                atomicMin(range + offset, range_int);         // 原子压入
             }
+            const float rval = getRange(p1, vec_line, obs, angle, b2);
+            const int range_int = floatToOrderedInt(rval);
+            short offset = 0;
+            if (range_singl) {
+                offset = getRangeOffsetSingl(s_id, e_id, i, range_num_1);
+            } else {
+                offset = getRangeOffset(s_id, i, range_num_1);
+            }
+            atomicMin(range + offset, range_int);         // 原子压入
+            angle += ang_incre;
+        }
+    } else {
+        for (short i = id_s; i <= id_e; i++) {
+            if (range_singl) {       // 超出range范围的不计算
+                if (isIdInRange<true>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
+                }
+            } else {
+                if (isIdInRange<false>(s_id, e_id, i) == false) {
+                    angle += ang_incre;
+                    continue;
+                }
+            }
+            const float rval = getRange(p1, vec_line, obs, angle, b2);
+            const int range_int = floatToOrderedInt(rval);
+            short offset = 0;
+            if (range_singl) {
+                offset = getRangeOffsetSingl(s_id, e_id, i, range_num_1);
+            } else {
+                offset = getRangeOffset(s_id, i, range_num_1);
+            }
+            atomicMin(range + offset, range_int);         // 原子压入
+            angle += ang_incre;
         }
     }
 }
@@ -204,7 +198,7 @@ __global__ void particleFilter(
     }
     __syncthreads();
     if (flags[sid] == true) {           // warp divergence 1
-        const float* const base = (raw_segs + 4 * sid);
+        const float* const base = (raw_segs + (sid << 2));
         Vec2f p1(*(base), *(base + 1)), p2(*(base + 2), *(base + 3));
         singleSegZbuffer(p1, p2, ptcls + pid, s_id, e_id, range_num, ang_incre, range);
     }
@@ -224,17 +218,5 @@ __global__ void particleFilter(
             atomicAdd_system(pos, abs_diff);
         }
     }
-    __syncthreads();
-}
-
-__global__ void initTest(
-    const Obsp* const ptcls,
-    bool* flags
-) {
-    const int pid = blockIdx.x, sid = threadIdx.x;
-    const Obsp* const obs_ptr = ptcls + pid;
-    const Vec2f this_obs(obs_ptr->x, obs_ptr->y);
-    const float angle = obs_ptr->a;
-    initialize(raw_segs, &this_obs, sid, flags);
     __syncthreads();
 }
