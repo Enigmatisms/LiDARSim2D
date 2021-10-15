@@ -51,7 +51,6 @@ if (COMPILE_CUDA)
       -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
   )
   add_compile_options(-Wno-deprecated-declarations)
-  SET(CUDA_SEPARABLE_COMPILATION ON)
 
   find_package(Boost REQUIRED COMPONENTS
     filesystem iostreams
@@ -73,10 +72,14 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-aux_source_directory(src/ SRC)
+aux_source_directory(src/utils UTILS_SRC)
+aux_source_directory(src/cuda CUDA_SRC)
+aux_source_directory(src/volume VOL_SRC)
+aux_source_directory(src/gl GL_SRC)
 
 add_executable(filter apps/filter.cc
-  ${SRC}
+  ${VOL_SRC}
+  ${UTILS_SRC}
 )
 
 target_link_libraries(filter
@@ -86,7 +89,8 @@ target_link_libraries(filter
 )
 
 add_executable(scan apps/scan_sim.cc
-  ${SRC}
+  ${VOL_SRC}
+  ${UTILS_SRC}
 )
 
 target_link_libraries(scan
@@ -96,7 +100,7 @@ target_link_libraries(scan
 )
 
 add_executable(editor apps/mapEditor.cc
-  ${SRC}
+  ${UTILS_SRC}
 )
 
 target_link_libraries(editor
@@ -106,7 +110,7 @@ target_link_libraries(editor
 )
 
 add_executable(test_key apps/testKey.cc
-  src/keyCtrl.cc
+  src/utils/keyCtrl.cc
 )
 
 target_link_libraries(test_key
@@ -125,12 +129,11 @@ install(DIRECTORY launch/
 )
 
 if (COMPILE_CUDA)
-  aux_source_directory(cuda/ CUDA_SRC)
   cuda_add_executable(cuda_test
     apps/cudaTest.cu
-    src/consts.cc
-    src/mapEdit.cc
-    src/keyCtrl.cc
+    src/utils/consts.cc
+    src/utils/mapEdit.cc
+    src/utils/keyCtrl.cc
     ${CUDA_SRC}
   )
 
@@ -140,6 +143,5 @@ if (COMPILE_CUDA)
     ${OpenCV_LIBS}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
-    /usr/local/cuda-10.1/targets/x86_64-linux/lib/libcudadevrt.a
   )
 endif()

@@ -14,9 +14,9 @@
 
 Some demo pictures are shown as follows:
 
-![](README/1.png)
+![](asset/1.png)
 
-![](README/2.png)
+![](asset/2.png)
 
 ---
 
@@ -102,10 +102,10 @@ roslaunch lidar_sim filter.launch
 
 To find out.
 
-|          ![](README/img.png)           |            ![](README/img2.png)            |
+|          ![](asset/img.png)           |            ![](asset/img2.png)            |
 | :------------------------------------: | :----------------------------------------: |
 | Long-corridor problem intial condition |      Long-corridor problem 4-th move       |
-|          ![](README/img3.png)          |            ![](README/ray2.png)            |
+|          ![](asset/img3.png)          |            ![](asset/ray2.png)            |
 |    Long-corridor problem 15-th move    | LiDAR simulator (with noise) visualization |
 
 ### 3. Scan simulator

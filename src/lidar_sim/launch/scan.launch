@@ -33,7 +33,7 @@
     <param name="lidar_fps" value="30" type="double"/>              <!-- Odometry frame rate -->
 
     <!-- other settings -->
-    <param name="map_name" value="two" type="string"/>         <!-- map to open -->
+    <param name="map_name" value="standard3" type="string"/>         <!-- map to open -->
     <param name="bag_name" value="test" type="string"/>             <!-- saved rosbag name -->
     <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->
     <param name="direct_pub" value="true" type="bool"/>             <!-- publish ros message directly -->

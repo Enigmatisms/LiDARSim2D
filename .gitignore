@@ -3,5 +3,8 @@ build/*
 devel/*
 build_debug/*
 data/*
+bags/*
+.catkin_workspace
 
 !*.json
+!bags/standard3.bag

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen" launch-prefix="nvprof -f -o /home/sentinel/prof.nvvp"> -->
+  <!-- <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen" launch-prefix="nvprof -f -print-gpu-trace -o /home/sentinel/prof.nvvp"> -->
   <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen">
     <param name="map_name" value="standard3" type="string"/>
     <param name="resample_freq" value="1" type="int"/>
