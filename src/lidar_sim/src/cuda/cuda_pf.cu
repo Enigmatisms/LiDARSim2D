@@ -11,14 +11,14 @@ const cv::Rect __floors(30, 30, 1140, 840);
 constexpr int ALIGN_CHECK = 0x03;
 constexpr double M_2PI = 2 * M_PI;
 
-CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum, int resample_freq): 
-    occupancy(occ), resample_freq(resample_freq), point_num(pnum * 10), cascade_num(point_num >> 4),
+CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum): 
+    occupancy(occ), point_num(pnum * 10), cascade_num(point_num >> 5),
     angle_min(angles(0)), angle_max(angles(1)), angle_incre(angles(2)), rng(0)
 {
     ray_num = static_cast<int>(floor((angles(1) - angles(0)) / angle_incre));
     full_ray_num = std::round(2 * M_PI / angle_incre);
     seg_num = 0;
-    
+    weight_vec.resize(point_num, 1.0 / static_cast<float>(point_num));
     #ifdef CUDA_CALC_TIME
     for (int i = 0; i < 5; i++) {
         time_sum[i] = 0.0;
@@ -29,7 +29,6 @@ CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum, int
 
 void CudaPF::particleInitialize(const cv::Mat& src, Eigen::Vector3d act_obs) {
     int pt_num = 0;
-    particles.clear();
     while (pt_num < point_num) {
         const double x = rng.uniform(38, 1167);
         const double y = rng.uniform(38, 867);
@@ -37,25 +36,26 @@ void CudaPF::particleInitialize(const cv::Mat& src, Eigen::Vector3d act_obs) {
         for (int i = 0; i < 10; i++) {
             const double dx = rng.gaussian(2);
             const double dy = rng.gaussian(2);
-            particles.emplace_back(x + dx, y + dy, static_cast<double>(i) * M_PI / 5.0);
+            particles[pt_num] = Obsp(x + dx, y + dy, static_cast<double>(i) * M_PI / 5.0);
             pt_num++;
         }
     }
-    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles.data(), pt_num * sizeof(Obsp), cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles, point_num * sizeof(Obsp), cudaMemcpyHostToDevice));
 }
 
-void CudaPF::particleUpdate(double mx, double my, double angle) {
+void CudaPF::particleUpdate(const Eigen::Vector3d& act_obs, double mx, double my, double angle) {
     TicToc timer;
     timer.tic();
     #pragma omp parallel for num_threads(8)
-    for (size_t i = 0; i < point_num; i++) {
+    for (int i = 0; i < point_num; i++) {
         Obsp& pt = particles[i];
         const double cosa = cos(pt.a), sina = sin(pt.a);
         pt.x += cosa * mx + sina * my;
         pt.y += sina * mx - cosa * my;
         pt.a += angle;
     }
-    for (Obsp& pt: particles) {
+    for (int i = 0; i < point_num; i++) {
+        Obsp& pt = particles[i];
         double _mx = 0, _my = 0, _a = 0;
         noisedMotion(_mx, _my, _a);
         pt.x += _mx;
@@ -66,10 +66,14 @@ void CudaPF::particleUpdate(double mx, double my, double angle) {
         else if (pt.a > M_2PI)
             pt.a -= M_2PI;
     }
+    // act_obs 的 z是角度，但是必须要0-2pi
+    obs->x = act_obs.x();
+    obs->y = act_obs.y();
+    obs->a = (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z();
     time_sum[2] += timer.toc();
     cnt_sum[2] += 1.0;
     timer.tic();
-    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles.data(), particles.size() * sizeof(Obsp), cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(cu_pts, particles, (point_num + 1) * sizeof(Obsp), cudaMemcpyHostToDevice));
     time_sum[3] += timer.toc();
     cnt_sum[3] += 1.0;
 }
@@ -77,8 +81,9 @@ void CudaPF::particleUpdate(double mx, double my, double angle) {
 __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obstacles) {
     CUDA_CHECK_RETURN(cudaMalloc((void **) &weights, point_num * sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **) &ref_range, ray_num * sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **) &cu_pts, point_num * sizeof(Obsp)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **) &obs, sizeof(Obsp)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **) &cu_pts, (point_num + 1) * sizeof(Obsp)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **) &particles, (point_num + 1) * sizeof(Obsp)));
+    obs = &particles[point_num];
 
     // 首先计算segment
     std::vector<std::vector<Eigen::Vector2d>> obstcs;
@@ -130,62 +135,52 @@ __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obsta
 
 Gnuplot gp1;
 void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src) {
-    static int sampler_cnt = 0;
     TicToc timer;
+    timer.tic();
+    // cudaProfilerStart();
+    particleFilter <<< 1, seg_num, shared_to_allocate >>> (
+                        &cu_pts[point_num], NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, 0, true);
+    cudaStream_t streams[8];
+    for (int i = 0; i < 8; i++)
+        cudaStreamCreateWithFlags(&streams[i],cudaStreamNonBlocking);
+    for (int i = 0; i < cascade_num; i++) {
+        particleFilter <<< 32, seg_num, shared_to_allocate, streams[i % 8]>>> (
+                    cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, i << 5, false);
+    }
     cv::rectangle(src, __walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, __floors, cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
-    // act_obs 的 z是角度，但是必须要0-2pi
-    std::vector<float> weight_vec(point_num, 1.0 / static_cast<float>(point_num));
-    if (sampler_cnt == 0) {
-        Obsp host_obs(act_obs(0), act_obs(1), (act_obs.z() < 0) ? act_obs.z() + M_2PI : act_obs.z());
-        timer.tic();
-        CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
-        particleFilter <<< 1, seg_num, shared_to_allocate >>> (
-                            obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, 0, true);
-        CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-        cudaStream_t streams[8];
-        streams[0] = cudaStreamDefault;
-        for (int i = 1; i < 8; i++)
-            cudaStreamCreateWithFlags(&streams[i],cudaStreamNonBlocking);
-        // cudaProfilerStart();
-        for (int i = 0; i < cascade_num; i++) {
-            particleFilter <<< 16, seg_num, shared_to_allocate, streams[i % 8]>>> (
-                                cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, i << 4, false);
-        }
-        CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-        // cudaProfilerStop();
-        for (int i = 1; i < 8; i++)
-            cudaStreamDestroy(streams[i]);
-        time_sum[0] += timer.toc();
-        cnt_sum[0] += 1.0;
-        CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyDeviceToHost));
-
-        #pragma omp parallel for num_threads(8)
-        for (int i = 0; i < point_num; i++) {
-            const Obsp& pt = particles[i];
-            weight_vec[i] /= static_cast<float>(ray_num);
-            const int ptx = pt.x, pty = pt.y;
-            if (ptx < 0 || pty < 0 || ptx >= 1200 || pty >= 900) {
-                weight_vec[i] *= 1.5;
-            } else {
-                if (occupancy.at<uchar>(pty, ptx) > 0x00) {
-                    weight_vec[i] *= 1.5;
-                }
-            }
-            weight_vec[i] = 1.0 / (weight_vec[i] + 1.0);
-        }
-        timer.tic();
-        float weight_sum = std::accumulate(weight_vec.begin(), weight_vec.end(), 0.0);
-        for (float& val: weight_vec)                                  // 归一化形成概率
-            val /= weight_sum;
-        importanceResampler(weight_vec);                               // 重采样
-        sampler_cnt = (sampler_cnt + 1) % resample_freq;
-        time_sum[1] += timer.toc();
-        cnt_sum[1] += 1.0;
-    }
-    visualizeParticles(weight_vec, src);
     cv::circle(src, cv::Point(act_obs.x(), act_obs.y()), 5, cv::Scalar(0, 255, 255), -1);
+    visualizeParticles(weight_vec, src);
+    CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+    // cudaProfilerStop();
+    for (int i = 0; i < 8; i++)
+        cudaStreamDestroy(streams[i]);
+    time_sum[0] += timer.toc();
+    cnt_sum[0] += 1.0;
+    CUDA_CHECK_RETURN(cudaMemcpy(weight_vec.data(), weights, sizeof(float) * point_num, cudaMemcpyDeviceToHost));
+
+    #pragma omp parallel for num_threads(8)
+    for (int i = 0; i < point_num; i++) {
+        const Obsp& pt = particles[i];
+        weight_vec[i] /= static_cast<float>(ray_num);
+        const int ptx = pt.x, pty = pt.y;
+        if (ptx < 0 || pty < 0 || ptx >= 1200 || pty >= 900) {
+            weight_vec[i] *= 1.5;
+        } else {
+            if (occupancy.at<uchar>(pty, ptx) > 0x00) {
+                weight_vec[i] *= 1.5;
+            }
+        }
+        weight_vec[i] = 1.0 / (weight_vec[i] + 1.0);
+    }
+    timer.tic();
+    float weight_sum = std::accumulate(weight_vec.begin(), weight_vec.end(), 0.0);
+    for (float& val: weight_vec)                                  // 归一化形成概率
+        val /= weight_sum;
+    importanceResampler(weight_vec);                               // 重采样
+    time_sum[1] += timer.toc();
+    cnt_sum[1] += 1.0;
 }
 
 /// @ref implementation from Thrun: Probabilistic Robotics
@@ -204,7 +199,9 @@ void CudaPF::importanceResampler(const std::vector<float>& weights) {
         }
         tmp.push_back(particles[i]);
     }
-    particles.assign(tmp.begin(), tmp.end());
+    #pragma omp parallel for num_threads(2)
+    for (size_t i = 0; i < tmp.size(); i++)
+        particles[i] = tmp[i];
 }
 
 void CudaPF::scanPerturb(std::vector<float>& range) {
@@ -214,15 +211,11 @@ void CudaPF::scanPerturb(std::vector<float>& range) {
 
 void CudaPF::visualizeParticles(const std::vector<float>& weights, cv::Mat& dst) const {
     Eigen::Vector2d center;
-    double weight_sum = 0.0;
     center.setZero();
-    for (size_t i = 0; i < particles.size(); i++) {
+    for (int i = 0; i < point_num; i++) {
         const Obsp& pt = particles[i];
         center += weights[i] * Eigen::Vector2d(pt.x, pt.y);
-        weight_sum += weights[i];
-        double val = weights[i];
-        uchar color_val = 254.0 * val, inv_color_val = 255.0 - color_val;
-        cv::Scalar color(color_val, 0, inv_color_val);
+        const cv::Scalar color(0, 0, 255);
         cv::circle(dst, cv::Point(pt.x, pt.y), 3, color, -1);
     }
     cv::circle(dst, cv::Point(center.x(), center.y()), 4, cv::Scalar(255, 0, 0), -1);

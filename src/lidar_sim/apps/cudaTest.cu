@@ -33,7 +33,6 @@ int main(int argc, char** argv) {
     std::vector<std::vector<cv::Point>> obstacles;
 
     std::string name = nh.param<std::string>("/cuda_test/map_name", "standard");
-    int resample_freq = nh.param<int>("/cuda_test/resample_freq", 3);
     int point_num = nh.param<int>("/cuda_test/point_num", 27000);
     double trans_vel = nh.param<double>("/cuda_test/trans_vel", 3);
     double rot_vel = nh.param<double>("/cuda_test/rot_vel", 1.0);
@@ -63,7 +62,7 @@ int main(int argc, char** argv) {
     }    
     cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
     cv::setMouseCallback("disp", on_mouse, NULL);
-    obs = Eigen::Vector2d(190, 515);
+    obs = Eigen::Vector2d(200, 523);
     while (obs_set == false) {
         cv::imshow("disp", src);
         char key = cv::waitKey(10);
@@ -71,7 +70,7 @@ int main(int argc, char** argv) {
             return 0;
     }
     Eigen::Vector3d angles(angle_min, angle_max, angle_incre);
-    CudaPF cpf(occupancy, angles, point_num, resample_freq);
+    CudaPF cpf(occupancy, angles, point_num);
     cpf.intialize(obstacles);
     cpf.particleInitialize(occupancy, Eigen::Vector3d(obs.x(), obs.y(), 0.0));
     bool render_flag = true;
@@ -89,7 +88,7 @@ int main(int argc, char** argv) {
             start_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
             Eigen::Vector3d act_obs;
             act_obs << obs, angle;            
-            cpf.particleUpdate(x_motion, y_motion, delta_angle);
+            cpf.particleUpdate(act_obs, x_motion, y_motion, delta_angle);
             cpf.filtering(obstacles, act_obs, src);
             // cpf.singleDebugDemo(obstacles, act_obs, src);
             end_t = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;

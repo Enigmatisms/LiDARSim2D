@@ -8,7 +8,7 @@
 
 class CudaPF {
 public:
-    CudaPF(const cv::Mat& occ, const Eigen::Vector3d& angles, int pnum, int resample_freq = 3);
+    CudaPF(const cv::Mat& occ, const Eigen::Vector3d& angles, int pnum);
     ~CudaPF() {
         #ifdef CUDA_CALC_TIME
         for (int i = 0; i < 5; i++) {
@@ -18,13 +18,14 @@ public:
         #endif
         CUDA_CHECK_RETURN(cudaFree(weights));
         CUDA_CHECK_RETURN(cudaFree(ref_range));
+        CUDA_CHECK_RETURN(cudaFreeHost(particles));
     }
 public:
     void intialize(const std::vector<std::vector<cv::Point>>& obstacles);
 
     void particleInitialize(const cv::Mat& src, Eigen::Vector3d act_obs = Eigen::Vector3d::Zero());
 
-    void particleUpdate(double mx, double my, double angle);
+    void particleUpdate(const Eigen::Vector3d& act_obs, double mx, double my, double angle);
 
     void singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src);
 
@@ -46,7 +47,6 @@ private:
     const cv::Mat& occupancy;
     int ray_num;
     int full_ray_num;
-    const int resample_freq;
 
     int seg_num;
     size_t shared_to_allocate;
@@ -63,8 +63,9 @@ private:
     Obsp* cu_pts;
     Obsp* obs;
 
-    std::vector<Obsp> particles;
+    Obsp* particles;
     std::vector<float> host_seg;
+    std::vector<float> weight_vec;
     cv::RNG rng;
     #ifdef CUDA_CALC_TIME
         std::array<double, 5> time_sum;
