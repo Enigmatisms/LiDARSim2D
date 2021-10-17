@@ -60,6 +60,12 @@ if (COMPILE_CUDA)
   endif()
 endif()
 
+set(OpenGL_GL_PREFERENCE GLVND)
+find_package(OpenGL REQUIRED)
+if(NOT OpenGL_FOUND)
+  message(FATAL_ERROR "OpenGL not found.")
+endif()
+
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS nav_msgs rosbag roscpp sensor_msgs std_msgs tf visualization_msgs
@@ -70,6 +76,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${OpenGL_INCLUDE_DIR}
 )
 
 aux_source_directory(src/utils UTILS_SRC)
@@ -145,3 +152,16 @@ if (COMPILE_CUDA)
     ${catkin_LIBRARIES}
   )
 endif()
+
+# add_executable(gl_test apps/glMapEditor.cc
+#   ${GL_SRC}
+#   src/utils/consts.cc
+#   src/utils/mapEdit.cc
+# )
+
+# target_link_libraries(gl_test
+#   ${catkin_LIBRARIES}
+#   ${OPENGL_LIBRARY}
+#   ${OpenCV_LIBS}
+#   glut
+# )

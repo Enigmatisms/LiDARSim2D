@@ -67,7 +67,7 @@ void controlFlow(char stat) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "scan");
     ros::NodeHandle nh;
-    cv::setNumThreads(2);
+    cv::setNumThreads(4);
     std::vector<std::vector<cv::Point>> obstacles;
     std::string name = nh.param<std::string>("/scan/map_name", "standard");
     std::string dev_name = nh.param<std::string>("/scan/dev_name", "/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd");

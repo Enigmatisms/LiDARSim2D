@@ -54,6 +54,32 @@ void mapLoad(std::string path, std::vector<std::vector<cv::Point>>& obstacles) {
     }
 }
 
+void mapLoad(std::string path, std::vector<std::vector<Eigen::Vector3d>>& obstacles) {
+    std::ifstream file(path, std::ios::in);
+    if (!file) {
+        system("pwd");
+        std::string error = "map of '" + path + "' does not exist.";
+        std::cerr << error << std::endl;
+        throw error.c_str();
+    }
+    std::string s;
+    while (getline(file, s)) {
+        std::stringstream ss;
+        ss << s;
+        obstacles.emplace_back();
+        std::vector<Eigen::Vector3d>& obs = obstacles.back();
+        size_t size = 0;
+        ss >> size;
+        for (size_t i = 0; i < size; i++) {
+            Eigen::Vector3d pt;
+            ss >> pt(0) >> pt(1);
+            pt(2) = 0.0;
+            obs.push_back(pt);
+        }
+    }
+}
+
+
 void mapSave(const std::vector<std::vector<cv::Point>>& obstacles, std::string path) {
     std::ofstream file(path, std::ios::out);
     for (const Obstacle& obs: obstacles) {

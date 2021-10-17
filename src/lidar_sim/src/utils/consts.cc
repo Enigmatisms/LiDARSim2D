@@ -23,6 +23,7 @@ const std::array<cv::Point, 9> west_wall = {
     cv::Point(30, 555), cv::Point(30, 450), cv::Point(30, 345),
     cv::Point(30, 240), cv::Point(30, 135), cv::Point(30, 30)
 };
+
 // const std::array<cv::Point, 11> north_wall = {   
 //     cv::Point(-1200, -1200), cv::Point(144, -1200), cv::Point(258, -1200), cv::Point(372, -1200),
 //     cv::Point(486, -1200), cv::Point(600, -1200), cv::Point(714, -1200), cv::Point(828, -1200),
