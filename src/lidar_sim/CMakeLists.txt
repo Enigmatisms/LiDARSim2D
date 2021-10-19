@@ -60,11 +60,11 @@ if (COMPILE_CUDA)
   endif()
 endif()
 
-set(OpenGL_GL_PREFERENCE GLVND)
-find_package(OpenGL REQUIRED)
-if(NOT OpenGL_FOUND)
-  message(FATAL_ERROR "OpenGL not found.")
-endif()
+# set(OpenGL_GL_PREFERENCE GLVND)
+# find_package(OpenGL REQUIRED)
+# if(NOT OpenGL_FOUND)
+#   message(FATAL_ERROR "OpenGL not found.")
+# endif()
 
 catkin_package(
   INCLUDE_DIRS include
@@ -82,7 +82,7 @@ include_directories(
 aux_source_directory(src/utils UTILS_SRC)
 aux_source_directory(src/cuda CUDA_SRC)
 aux_source_directory(src/volume VOL_SRC)
-aux_source_directory(src/gl GL_SRC)
+# aux_source_directory(src/gl GL_SRC)
 
 add_executable(filter apps/filter.cc
   ${VOL_SRC}

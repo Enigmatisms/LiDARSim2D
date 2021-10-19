@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/gmap.rviz" />
+  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+    <param name="base_frame" value="scan" type="string"/>
+    <param name="delta" value="0.05"/>
+    <param name="maxUrange" value="80.0"/>
+    <param name="xmin" value="-100.0"/>
+    <param name="ymin" value="-100.0"/>
+    <param name="xmax" value="100.0"/>
+    <param name="ymax" value="100.0"/>
+    <param name="particles" value="45"/>
+    <param name="srr" value="0.1"/>
+    <param name="srt" value="0.2"/>
+    <param name="str" value="0.1"/>
+    <param name="stt" value="0.2"/>
+    <param name="minimumScore" value="0.0"/>
+    <param name="map_update_interval" value="1"/>
+    <param name="lsigma" value="0.075"/>
+  </node>
+</launch>

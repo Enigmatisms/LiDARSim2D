@@ -34,15 +34,13 @@ void makePerturbedOdom(
     static double last_angle_vel = 0.0;
     delta_p(0) = delta_p(0) + trans_noise(engine);
     delta_p(1) = delta_p(1) + trans_noise(engine);
-    const double angle = __pose__.z() + delta_p(2);
     delta_p(2) += rot_noise(engine);
-    Eigen::Matrix2d R;
-    R << cos(angle), -sin(angle), sin(angle), cos(angle);
-    Eigen::Vector2d translation = delta_p.block<2, 1>(0, 0);
-    translation = R * translation;
-    Eigen::Vector3d true_delta;
-    true_delta << translation, delta_p(2);
-    __pose__ += true_delta;
+    Eigen::Matrix2d R, dR;
+    dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
+    R << cos(__pose__.z()), -sin(__pose__.z()), sin(__pose__.z()), cos(__pose__.z());
+    R = (R * dR).eval();
+    __pose__.block<2, 1>(0, 0) = (R * delta_p.block<2, 1>(0, 0) + __pose__.block<2, 1>(0, 0)).eval();
+    __pose__(2) = atan2(R(1, 0), R(0, 0));
     odom.header.frame_id = frame_id;
     odom.header.seq = cnt;
     odom.header.stamp = ros::Time::now();
@@ -72,6 +70,32 @@ void makePerturbedOdom(
         odom.twist.covariance.back() = std::pow(noise_level(3), 2);
     }
     cnt++;
+}
+
+void odomTFSimulation(
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    std::string frame_id, std::string child_id
+) {
+    static Eigen::Vector3d pose = Eigen::Vector3d::Zero();
+    static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
+    static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
+    static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
+    delta_p(0) = delta_p(0) + trans_noise(engine);
+    delta_p(1) = delta_p(1) + trans_noise(engine);
+    delta_p(2) += rot_noise(engine);
+    Eigen::Matrix2d R, dR;
+    dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
+    R << cos(pose.z()), -sin(pose.z()), sin(pose.z()), cos(pose.z());
+    R = (R * dR).eval();
+    pose.block<2, 1>(0, 0) = (R * delta_p.block<2, 1>(0, 0) + pose.block<2, 1>(0, 0)).eval();
+    pose(2) = atan2(R(1, 0), R(0, 0));
+
+    tf::Matrix3x3 tf_R(R(0, 0), R(0, 1), 0,
+                       R(1, 0), R(1, 1), 0,
+                        0, 0, 1);
+    tf::Vector3 tf_t(pose(0), pose(1), 0);
+    tf::Transform transform(tf_R, tf_t);
+    tf = tf::StampedTransform(transform, ros::Time::now(), frame_id, child_id);
 }
 
 void sendTransform(Eigen::Vector3d p, std::string frame_id, std::string child_frame_id) {

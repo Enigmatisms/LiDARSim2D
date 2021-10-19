@@ -20,6 +20,12 @@ extern double K_P;
 extern double K_I;
 extern double K_D;
 
+// scan带有漂移的odometry transform
+void odomTFSimulation(
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    std::string frame_id, std::string child_id
+);
+
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg);
 
 /// @brief create transform - tf messages
