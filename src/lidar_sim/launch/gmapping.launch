@@ -9,7 +9,7 @@
     <param name="ymin" value="-100.0"/>
     <param name="xmax" value="100.0"/>
     <param name="ymax" value="100.0"/>
-    <param name="particles" value="45"/>
+    <param name="particles" value="15"/>
     <param name="srr" value="0.1"/>
     <param name="srt" value="0.2"/>
     <param name="str" value="0.1"/>

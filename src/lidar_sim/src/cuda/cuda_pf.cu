@@ -11,7 +11,7 @@ const cv::Rect __floors(30, 30, 1140, 840);
 constexpr int ALIGN_CHECK = 0x03;
 constexpr double M_2PI = 2 * M_PI;
 
-CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum): 
+CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum, std::string path): 
     occupancy(occ), point_num(pnum * 10), cascade_num(point_num >> 5),
     angle_min(angles(0)), angle_max(angles(1)), angle_incre(angles(2)), rng(0)
 {
@@ -25,6 +25,9 @@ CudaPF::CudaPF(const cv::Mat& occ,  const Eigen::Vector3d& angles, int pnum):
         cnt_sum[i] = 0.0;
     }
     #endif // CALC_TIME
+    #ifdef SAVE_RANGE_FILE
+        file.open(path, std::ios::out);
+    #endif
 }
 
 void CudaPF::particleInitialize(const cv::Mat& src, Eigen::Vector3d act_obs) {
@@ -147,6 +150,16 @@ void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eig
         particleFilter <<< 32, seg_num, shared_to_allocate, streams[i % 8]>>> (
                     cu_pts, ref_range, weights, angle_min, angle_incre, ray_num, full_ray_num, i << 5, false);
     }
+    #ifdef SAVE_RANGE_FILE
+    std::vector<float> range(ray_num, 0.0);
+    CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyDeviceToHost));
+    int start_id = static_cast<int>(ceil((angle_min + act_obs(2) + M_PI) / angle_incre)) % full_ray_num;
+    file << act_obs(0) << "," << act_obs(1) << "," << start_id << ",";
+    for (int i = 0; i < ray_num; i++) {
+        file << range[i] << ",";
+    }
+    file << std::endl;
+    #endif
     cv::rectangle(src, __walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(src, __floors, cv::Scalar(40, 40, 40), -1);
     cv::drawContours(src, obstacles, -1, cv::Scalar(10, 10, 10), -1);
@@ -232,7 +245,7 @@ void CudaPF::singleDebugDemo(const std::vector<std::vector<cv::Point>>& obstacle
     timer.tic();
     CUDA_CHECK_RETURN(cudaMemcpy(obs, &host_obs, sizeof(Obsp), cudaMemcpyHostToDevice));
     particleFilter <<< 1, seg_num, shared_to_allocate >>> (
-                        obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, true);
+                        obs, NULL, ref_range, angle_min, angle_incre, ray_num, full_ray_num, 0, true);
     std::vector<float> range(ray_num, 0.0);
     std::cout << "Time consumption:" << timer.toc() << std::endl;
     CUDA_CHECK_RETURN(cudaMemcpy(range.data(), ref_range, sizeof(float) * ray_num, cudaMemcpyDeviceToHost));

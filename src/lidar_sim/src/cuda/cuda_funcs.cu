@@ -52,7 +52,7 @@ __device__ __forceinline__ short getRangeOffsetSingl(const short range_sid, cons
 
 __device__ __forceinline__ float getRange(const Vec2f& p1, const Vec2f& vec_line, const Vec2f& obs_pt, const float angle, const float b2) {
     const float A00 = vec_line.x, A01 = -cosf(angle), A10 = vec_line.y, A11 = -sinf(angle);
-    const float b1 = A11 * obs_pt.x - A01 * obs_pt.x;
+    const float b1 = A11 * obs_pt.x - A01 * obs_pt.y;
     const float det = A00 * A11 - A01 * A10;
     if (abs(det) < 1e-5f) {
         return (p1 - obs_pt).norm();

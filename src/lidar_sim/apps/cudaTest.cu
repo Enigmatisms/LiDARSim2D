@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
             return 0;
     }
     Eigen::Vector3d angles(angle_min, angle_max, angle_incre);
-    CudaPF cpf(occupancy, angles, point_num);
+    CudaPF cpf(occupancy, angles, point_num, pack_path + "/../../maps/range.txt");
     cpf.intialize(obstacles);
     cpf.particleInitialize(occupancy, Eigen::Vector3d(obs.x(), obs.y(), 0.0));
     bool render_flag = true;

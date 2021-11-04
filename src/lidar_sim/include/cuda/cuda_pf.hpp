@@ -2,13 +2,15 @@
 #pragma once
 #include "cuda_funcs.h"
 #include <vector>
+#include <fstream>
 #include <opencv2/core.hpp>
 #include "cuda_err_check.hpp"
 #define CUDA_CALC_TIME
+#define SAVE_RANGE_FILE
 
 class CudaPF {
 public:
-    CudaPF(const cv::Mat& occ, const Eigen::Vector3d& angles, int pnum);
+    CudaPF(const cv::Mat& occ, const Eigen::Vector3d& angles, int pnum, std::string path = "");
     ~CudaPF() {
         #ifdef CUDA_CALC_TIME
         for (int i = 0; i < 5; i++) {
@@ -19,6 +21,9 @@ public:
         CUDA_CHECK_RETURN(cudaFree(weights));
         CUDA_CHECK_RETURN(cudaFree(ref_range));
         CUDA_CHECK_RETURN(cudaFreeHost(particles));
+        #ifdef SAVE_RANGE_FILE
+        file.close();
+        #endif
     }
 public:
     void intialize(const std::vector<std::vector<cv::Point>>& obstacles);
@@ -71,4 +76,7 @@ private:
         std::array<double, 5> time_sum;
         std::array<double, 5> cnt_sum;
     #endif // CUDA_CALC_TIME
+    #ifdef SAVE_RANGE_FILE
+        std::ofstream file;
+    #endif
 };
