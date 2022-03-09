@@ -9,7 +9,7 @@ KeyCtrl::KeyCtrl(std::string dev_name, std::atomic_char& stat): status(stat) {
     constexpr char name[13] = "K_MEDIUMRAW";
     const char *device = NULL;
     if ((getuid()) != 0) {          // admin clearance
-        std::string command = "echo \"121\" | sudo -S chmod 777 " + dev_name;
+        std::string command = "echo \"'\" | sudo -S chmod 777 " + dev_name;
         system(command.c_str());
     }
     device = dev_name.c_str();

@@ -5,6 +5,7 @@
     <!-- controller settings -->
 
     <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
+    <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
 
     <param name="trans_speed" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
     <param name="rot_vel" value="2" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
@@ -15,11 +16,11 @@
     <param name="kd" value="0.001" type="double"/>                  <!-- Mouse control PID coefficient -->
   
     <!-- Keyboard event stream: name of the device -->
-    <param name="dev_name" value="/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd" type="string"/>
+    <param name="dev_name" value="/dev/input/by-id/usb-Primax_Lenovo_Traditional_USB_Keyboard-event-kbd" type="string"/>
 
     <!-- LiDAR settings -->
-    <param name="angle_min" value="-2.0" type="double"/>            <!-- LiDAR minimal angle -->
-    <param name="angle_max" value="2.0" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_min" value="-1.57" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="1.57" type="double"/>             <!-- LiDAR maximal angle -->
     <param name="angle_incre" value="0.0017453" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.03" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
     <param name="lidar_fps" value="25" type="double"/>              <!-- LiDAR frame rate -->

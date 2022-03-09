@@ -26,11 +26,6 @@ if(NOT OpenCV_FOUND)
   message(FATAL_ERROR "OpenCV > 3 not found.")
 endif()
 
-find_package(Eigen3 REQUIRED)
-if(NOT Eigen3_FOUND)
-  message(FATAL_ERROR "Eigen3 not found.")
-endif()
-
 find_package(OpenMP)
 if (OPENMP_FOUND)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -45,7 +40,7 @@ if (COMPILE_CUDA)
       CUDA_NVCC_FLAGS
       ${CUDA_NVCC_FLAGS};
       -O3 --use_fast_math
-      -gencode=arch=compute_61,code=sm_61
+      -gencode=arch=compute_86,code=sm_86
       -lcudadevrt -lcudart
       --expt-relaxed-constexpr
       -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored
@@ -58,6 +53,20 @@ if (COMPILE_CUDA)
   if(NOT Boost_FOUND)
      message(FATAL_ERROR "Boost not found.")
   endif()
+  if (CUDA_VERSION VERSION_LESS "10.2")
+    find_package(Eigen3 REQUIRED)
+    if(NOT Eigen3_FOUND)
+      message(FATAL_ERROR "Eigen3 not found.")
+    endif()
+  else()
+    set(EIGEN3_INCLUDE_DIRS "/home/llk/ExtraModules/eigen-3.4.0/")
+  endif()
+else()
+  find_package(Eigen3 REQUIRED)
+  if(NOT Eigen3_FOUND)
+    message(FATAL_ERROR "Eigen3 not found.")
+  endif()
+  message(STATUS ${Eigen3_VERSION})
 endif()
 
 # set(OpenGL_GL_PREFERENCE GLVND)
@@ -141,9 +150,10 @@ if (COMPILE_CUDA)
     src/utils/consts.cc
     src/utils/mapEdit.cc
     src/utils/keyCtrl.cc
-    ${CUDA_SRC}
+    src/cuda/cuda_funcs.cu
+    src/cuda/cuda_pf.cu
   )
-
+  enable_language(CUDA)
   set_property(TARGET cuda_test PROPERTY CXX_STANDARD 14)
 
   target_link_libraries(cuda_test
