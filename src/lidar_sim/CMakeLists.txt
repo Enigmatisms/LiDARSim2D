@@ -115,6 +115,17 @@ target_link_libraries(scan
   pthread
 )
 
+add_executable(scan_joy apps/scan_sim_joy.cc
+  ${VOL_SRC}
+  ${UTILS_SRC}
+)
+
+target_link_libraries(scan_joy
+  ${OpenCV_LIBS}
+  ${catkin_LIBRARIES}
+  pthread
+)
+
 add_executable(editor apps/mapEditor.cc
   ${UTILS_SRC}
 )
@@ -134,7 +145,16 @@ target_link_libraries(test_key
   pthread
 )
 
-install(TARGETS filter scan editor test_key
+add_executable(test_joy apps/testJoy.cc
+  src/utils/joyCtrl.cc
+)
+
+target_link_libraries(test_joy
+  ${catkin_LIBRARIES}
+  pthread
+)
+
+install(TARGETS filter scan editor test_key test_joy scan_joy
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

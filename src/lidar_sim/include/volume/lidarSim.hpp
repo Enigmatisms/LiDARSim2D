@@ -10,8 +10,8 @@ public:
 public:
     /// @brief 模拟激光器扫描
     void scan(
-        const std::vector<std::vector<cv::Point>>& obstacles,
-        Eigen::Vector2d act_obs, std::vector<double>& range, cv::Mat& src, double angle
+        const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector2d act_obs,
+        std::vector<double>& range, cv::Mat& src, double angle, bool show_ray = true
     );
 
     void scanMakeSparse(const std::vector<double>& range, std::vector<double>& sparse, int angle_offset);

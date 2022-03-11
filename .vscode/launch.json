@@ -23,6 +23,11 @@
             ]
         },
         {
+            "name": "ROS: Attach",
+            "type": "ros",
+            "request": "attach"
+        },
+        {
             "name": "(gdb) gl",
             "type": "cppdbg",
             "request": "launch",

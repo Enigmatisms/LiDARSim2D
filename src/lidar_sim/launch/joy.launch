@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/config.rviz" />
+  <node pkg="joy" type="joy_node" name="joy_node" output="screen"/>
+  <node pkg="lidar_sim" type="scan_joy" name="scan_joy" output="screen">
+    <!-- controller settings -->
+
+    <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
+    <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
+    <param name="show_ray" value="false" type="bool"/>              <!-- Visualize scan -->
+
+    <param name="trans_speed_amp" value="0.75" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
+    <param name="rot_vel_amp" value="0.75" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
+    <param name="init_x" value="367.0" type="double"/>              <!-- Initial position x -->
+    <param name="init_y" value="769.0" type="double"/>              <!-- Initial position y -->
+
+    <!-- LiDAR settings -->
+    <param name="angle_min" value="-1.57" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="1.57" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_incre" value="0.0017453" type="double"/>     <!-- LiDAR angle increment -->
+    <param name="lidar_noise" value="0.03" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
+    <param name="lidar_fps" value="25" type="double"/>              <!-- LiDAR frame rate -->
+
+    <!-- Odometry settings -->
+    <!-- Gaussian distribution sigma parameter -->
+    <param name="translation_noise" value="0.005" type="double"/>    <!-- odometry translation noise sigma -->
+    <param name="rotation_noise" value="0.0006" type="double"/>      <!-- odometry rotation noise sigma -->
+    <param name="trans_vel_noise" value="0.075" type="double"/>     <!-- odometry translation velocity noise sigma -->
+    <param name="rot_vel_noise" value="0.01" type="double"/>        <!-- odometry rotation velocity noise sigma -->
+    <param name="lidar_fps" value="30" type="double"/>              <!-- Odometry frame rate -->
+
+    <!-- other settings -->
+    <param name="map_name" value="standard6" type="string"/>         <!-- map to open -->
+    <param name="bag_name" value="gm3" type="string"/>             <!-- saved rosbag name -->
+    <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->
+    <param name="direct_pub" value="true" type="bool"/>             <!-- publish ros message directly -->
+    <param name="imu_plot" value="false" type="bool"/>              <!-- save imu output to file -->
+  </node>
+</launch>

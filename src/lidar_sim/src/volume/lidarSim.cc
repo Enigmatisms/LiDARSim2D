@@ -13,8 +13,8 @@ LidarSim::LidarSim(Eigen::Vector3d angles, double noise_lv):
 }
 
 void LidarSim::scan(
-    const std::vector<std::vector<cv::Point>>& obstacles,
-    Eigen::Vector2d obs, std::vector<double>& range, cv::Mat& src, double angle
+    const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector2d obs,
+    std::vector<double>& range, cv::Mat& src, double angle, bool show_ray
 ) {
     std::vector<double> act_range;
     act_range.resize(full_num, -1.0);
@@ -32,7 +32,8 @@ void LidarSim::scan(
         edgeIntersect(eg, obs, act_range);
     range.resize(sparse_ray_num, 0.0);
     scanMakeSparse(act_range, range, angle_offset);
-    visualizeRay(range, obs, src, angle);
+    if (show_ray)
+        visualizeRay(range, obs, src, angle);
 }
 
 void LidarSim::edgeIntersect(const Edge& eg, const Eigen::Vector2d& obs, std::vector<double>& range) const {
