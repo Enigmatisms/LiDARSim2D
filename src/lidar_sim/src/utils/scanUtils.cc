@@ -5,6 +5,18 @@ double K_P = 0.2;
 double K_I = 0.0001;
 double K_D = 0.001;
 
+double goodAngle(double angle) {
+    if (angle > M_PI)
+        return angle - 2 * M_PI;
+    else if (angle < -M_PI)
+        return angle + 2 * M_PI;
+    return angle;
+}
+
+double quaterion2Angle(tf::Quaternion qt) {
+    return goodAngle(atan2(qt.z(), qt.w()) * 2.0);
+}
+
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg) {
     geometry_msgs::TransformStamped geo_msg;
     tf::transformStampedTFToMsg(transf, geo_msg);
@@ -21,25 +33,39 @@ void makeTransform(Eigen::Vector3d p, std::string frame_id, std::string child_fr
     transf = tf::StampedTransform(transform, ros::Time::now(), frame_id, child_frame_id);
 }
 
+tf::StampedTransform getOdom2MapTF(const tf::StampedTransform& scan2map, const tf::StampedTransform& scan2odom, const Eigen::Vector2d& init_obs, double init_angle) {
+    double scan_rot = goodAngle(quaterion2Angle(scan2map.getRotation()) - init_angle), odom_rot = quaterion2Angle(scan2odom.getRotation()), inv_angle = goodAngle(scan_rot - odom_rot);
+    Eigen::Matrix2d R_odom_inv;
+    R_odom_inv << cos(odom_rot), sin(odom_rot), -sin(odom_rot), cos(odom_rot);
+    const tf::Vector3 raw_scan_t = scan2map.getOrigin(), raw_odom_t = scan2odom.getOrigin();
+    Eigen::Vector2d relative_t = Eigen::Vector2d(raw_scan_t.x(), raw_scan_t.y()) - init_obs;
+
+    const Eigen::Vector2d odom_t(raw_odom_t.x(), raw_odom_t.y());
+    const Eigen::Vector2d inv_t = relative_t - odom_t;
+    // scan2odom.inverse() * scan2map
+    tf::Matrix3x3 tf_R(cos(inv_angle), -sin(inv_angle), 0,
+                       sin(inv_angle), cos(inv_angle), 0,          
+                       0, 0, 1);
+    tf::Vector3 tf_t(inv_t.x(), inv_t.y(), 0);         
+    return tf::StampedTransform(tf::Transform(tf_R, tf_t), scan2odom.stamp_, "map", scan2odom.frame_id_);
+}
+
 void makePerturbedOdom(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
-    double duration, std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, 
+    nav_msgs::Odometry& odom, double init_angle, double duration, std::string frame_id, std::string child_id
 ) {
     /// @note since the input delta_p is in the map frame, no transformation is needed.
     static int cnt = 0;
-    static Eigen::Vector3d __pose__ = Eigen::Vector3d::Zero();
+    static Eigen::Vector3d __pose__ = Eigen::Vector3d(init_pos.x(), init_pos.y(), init_angle);
     static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
     static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
-    static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
+    // static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
     static double last_angle_vel = 0.0;
-    delta_p(0) = delta_p(0) + trans_noise(engine);
-    delta_p(1) = delta_p(1) + trans_noise(engine);
-    delta_p(2) += rot_noise(engine);
     Eigen::Matrix2d R, dR;
     dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
     R << cos(__pose__.z()), -sin(__pose__.z()), sin(__pose__.z()), cos(__pose__.z());
-    R = (R * dR).eval();
     __pose__.block<2, 1>(0, 0) = (R * delta_p.block<2, 1>(0, 0) + __pose__.block<2, 1>(0, 0)).eval();
+    R = (R * dR).eval();
     __pose__(2) = atan2(R(1, 0), R(0, 0));
     odom.header.frame_id = frame_id;
     odom.header.seq = cnt;
@@ -60,7 +86,7 @@ void makePerturbedOdom(
         double angle_vel = delta_p(2) / duration;
         odom.twist.twist.linear.x = (delta_p(0) / duration) + trans_noise(engine);
         odom.twist.twist.linear.y = (delta_p(1) / duration) + trans_noise(engine);
-        odom.twist.twist.linear.y = 0.0;
+        odom.twist.twist.linear.z = 0.0;
         odom.twist.twist.angular.x = 0.0;
         odom.twist.twist.angular.y = 0.0;
         odom.twist.twist.angular.z = 0.95 * angle_vel + 0.05 * last_angle_vel;
@@ -73,7 +99,7 @@ void makePerturbedOdom(
 }
 
 void odomTFSimulation(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d& delta_p, tf::StampedTransform& tf, 
     std::string frame_id, std::string child_id
 ) {
     static Eigen::Vector3d pose = Eigen::Vector3d::Zero();
@@ -86,8 +112,9 @@ void odomTFSimulation(
     Eigen::Matrix2d R, dR;
     dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
     R << cos(pose.z()), -sin(pose.z()), sin(pose.z()), cos(pose.z());
-    R = (R * dR).eval();
+
     pose.block<2, 1>(0, 0) = (R * delta_p.block<2, 1>(0, 0) + pose.block<2, 1>(0, 0)).eval();
+    R = (R * dR).eval();
     pose(2) = atan2(R(1, 0), R(0, 0));
 
     tf::Matrix3x3 tf_R(R(0, 0), R(0, 1), 0,

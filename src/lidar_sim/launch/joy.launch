@@ -8,30 +8,36 @@
     <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
     <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
     <param name="show_ray" value="false" type="bool"/>              <!-- Visualize scan -->
+    <param name="bag_imu" value="false" type="bool"/>               <!-- Record imu data in bag or not -->
+    <param name="bag_odom" value="false" type="bool"/>              <!-- Record odometry data in bag or not -->
 
-    <param name="trans_speed_amp" value="0.75" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
-    <param name="rot_vel_amp" value="0.75" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
+    <param name="trans_speed_amp" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
+    <param name="rot_vel_amp" value="1.1" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
     <param name="init_x" value="367.0" type="double"/>              <!-- Initial position x -->
     <param name="init_y" value="769.0" type="double"/>              <!-- Initial position y -->
+    <param name="display_rate" value="120" type="double"/>              <!-- LiDAR frame rate -->
+    <param name="pix_resolution" value="0.02" type="double"/>               <!-- 1 pixel would represent <pix_resolution> meter, default 0.02m -->
 
     <!-- LiDAR settings -->
     <param name="angle_min" value="-1.57" type="double"/>            <!-- LiDAR minimal angle -->
     <param name="angle_max" value="1.57" type="double"/>             <!-- LiDAR maximal angle -->
     <param name="angle_incre" value="0.0017453" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.03" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
-    <param name="lidar_fps" value="25" type="double"/>              <!-- LiDAR frame rate -->
+    <param name="lidar_multiple" value="3" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 
     <!-- Odometry settings -->
     <!-- Gaussian distribution sigma parameter -->
-    <param name="translation_noise" value="0.005" type="double"/>    <!-- odometry translation noise sigma -->
-    <param name="rotation_noise" value="0.0006" type="double"/>      <!-- odometry rotation noise sigma -->
+    <param name="translation_noise" value="0.002" type="double"/>    <!-- odometry translation noise sigma -->
+    <param name="rotation_noise" value="0.0003" type="double"/>      <!-- odometry rotation noise sigma -->
     <param name="trans_vel_noise" value="0.075" type="double"/>     <!-- odometry translation velocity noise sigma -->
     <param name="rot_vel_noise" value="0.01" type="double"/>        <!-- odometry rotation velocity noise sigma -->
-    <param name="lidar_fps" value="30" type="double"/>              <!-- Odometry frame rate -->
 
     <!-- other settings -->
-    <param name="map_name" value="standard6" type="string"/>         <!-- map to open -->
-    <param name="bag_name" value="gm3" type="string"/>             <!-- saved rosbag name -->
+    <param name="map_name" value="standard3" type="string"/>         <!-- map to open -->
+    <param name="bag_name" value="test_output" type="string"/>             <!-- saved rosbag name -->
+    <param name="scan_topic" value="scan" type="string"/>             <!-- topic name of scan -->
+    <param name="odom_topic" value="odom" type="string"/>             <!-- topic name of odom -->
+    <param name="imu_topic" value="imu" type="string"/>             <!-- topic name of imu -->
     <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->
     <param name="direct_pub" value="true" type="bool"/>             <!-- publish ros message directly -->
     <param name="imu_plot" value="false" type="bool"/>              <!-- save imu output to file -->

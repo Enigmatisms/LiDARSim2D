@@ -3,7 +3,7 @@
         {
             "name": "Linux",        
             "includePath": [
-                "/opt/ros/melodic/include/**",
+                "/opt/ros/noetic/include/**",
                 "/usr/include/**",
                 "/usr/include/eigen3/**",
                 "/usr/local/include/**",

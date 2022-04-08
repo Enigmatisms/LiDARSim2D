@@ -22,9 +22,11 @@ extern double K_D;
 
 // scan带有漂移的odometry transform
 void odomTFSimulation(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d& delta_p, tf::StampedTransform& tf, 
     std::string frame_id, std::string child_id
 );
+
+tf::StampedTransform getOdom2MapTF(const tf::StampedTransform& scan2map, const tf::StampedTransform& scan2odom, const Eigen::Vector2d& init_obs, double init_angle);
 
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg);
 
@@ -40,8 +42,8 @@ void makeScan(
 /// @brief 2D Odometry with noise
 /// @param noise_level the first elem of this var is the noise level in translation, the second is for rotation
 void makePerturbedOdom(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, nav_msgs::Odometry& odom, 
-    double duration, std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, 
+    nav_msgs::Odometry& odom, double init_angle, double duration, std::string frame_id, std::string child_id
 );
 
 void sendTransform(Eigen::Vector3d p, std::string frame_id, std::string child_frame_id);
@@ -76,7 +78,7 @@ public:
     }
 
     // return in milliseconds
-    double toc() {
+    double toc() const {
         auto end = std::chrono::system_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         return static_cast<double>(duration.count()) / 1000.0;

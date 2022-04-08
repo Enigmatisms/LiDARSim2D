@@ -4,6 +4,9 @@ JoyCtrl::JoyCtrl() {
     spinner = new ros::AsyncSpinner(1);
     record_bag = false;
     exit_flag = false;
+    forward_speed = 0;
+    lateral_speed = 0;
+    angular_vel = 0;
 }
 
 void JoyCtrl::start(ros::NodeHandle& nh) {

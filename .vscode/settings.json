@@ -92,7 +92,15 @@
         "*.cuh": "cpp",
         "forward_list": "cpp",
         "slist": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "any": "cpp",
+        "codecvt": "cpp",
+        "filesystem": "cpp",
+        "regex": "cpp",
+        "shared_mutex": "cpp",
+        "bit": "cpp",
+        "__nullptr": "cpp",
+        "__locale": "cpp"
     },
     "git.ignoreLimitWarning": true,
     "python.autoComplete.extraPaths": [

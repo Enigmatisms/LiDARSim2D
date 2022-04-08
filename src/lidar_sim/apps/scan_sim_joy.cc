@@ -38,7 +38,7 @@ float speed[3] = {0, 0, 0};
 
 void controlFlow() {
     speed[0] = reinterpret_cast<float &>(joyc->forward_speed) * trans_speed_amp;
-    speed[1] = reinterpret_cast<float &>(joyc->lateral_speed) * trans_speed_amp;
+    speed[1] = -reinterpret_cast<float &>(joyc->lateral_speed) * trans_speed_amp;
     speed[2] = -reinterpret_cast<float &>(joyc->angular_vel) * rot_vel_amp;
     record_bag = joyc->record_bag;
     exit_flag = joyc->exit_flag;
@@ -49,7 +49,12 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     cv::setNumThreads(4);
     std::vector<std::vector<cv::Point>> obstacles;
+
+
     std::string name = nh.param<std::string>("/scan_joy/map_name", "standard");
+    std::string scan_topic = nh.param<std::string>("/scan_joy/scan_topic", "scan");
+    std::string odom_topic = nh.param<std::string>("/scan_joy/odom_topic", "odom");
+    std::string imu_topic = nh.param<std::string>("/scan_joy/odom_topic", "imu");
     std::string bag_name = nh.param<std::string>("/scan_joy/bag_name", "standard");
     trans_speed_amp = nh.param<double>("/scan_joy/trans_speed_amp", 3.0);
     rot_vel_amp = nh.param<double>("/scan_joy/rot_vel_amp", 1.5);
@@ -58,8 +63,7 @@ int main(int argc, char** argv) {
     double angle_min = nh.param<double>("/scan_joy/angle_min", -M_PI / 2);
     double angle_max = nh.param<double>("/scan_joy/angle_max", M_PI / 2);
     double angle_incre = nh.param<double>("/scan_joy/angle_incre", M_PI / 1800.0);
-    double lidar_fps = nh.param<double>("/scan_joy/lidar_fps", 20.0);
-    double odom_fps = nh.param<double>("/scan_joy/odom_fps", 40.0);
+    double display_rate = nh.param<double>("/scan_joy/display_rate", 20.0);
 
     double translation_noise = nh.param<double>("/scan_joy/translation_noise", 0.08);
     double rotation_noise = nh.param<double>("/scan_joy/rotation_noise", 0.01);
@@ -67,19 +71,26 @@ int main(int argc, char** argv) {
     double rot_vel_noise = nh.param<double>("/scan_joy/rot_vel_noise", 0.01);
 
     double lidar_noise = nh.param<double>("/scan_joy/lidar_noise", 0.02);
+    const double pix_resolution = nh.param<double>("/scan_joy/pix_resolution", 0.02);
+    int lidar_multiple = nh.param<int>("/scan_joy/lidar_multiple", 2);
     bool skip_selection = nh.param<bool>("/scan_joy/skip_selection", false);
     bool imu_plot = nh.param<bool>("/scan_joy/imu_plot", false);
     bool use_recorded_path = nh.param<bool>("/scan_joy/use_recorded_path", false);
-    bool show_ray = nh.param<bool>("/scan_joy/show_ray", false);
+    bool bag_imu = nh.param<bool>("/scan_joy/bag_imu", false);
+    bool bag_odom = nh.param<bool>("/scan_joy/bag_odom", false);
     mouse_ctrl = nh.param<bool>("/scan_joy/enable_mouse_ctrl", false);
+    K_P = nh.param<double>("/scan_joy/kp", 0.2);
+    K_I = nh.param<double>("/scan_joy/ki", 0.0001);
+    K_D = nh.param<double>("/scan_joy/kd", 0.01);
+
+
     ros::Publisher scan_pub, odom_pub, imu_pub;
     scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 100);
     odom_pub = nh.advertise<nav_msgs::Odometry>("sim_odom", 100);
     imu_pub = nh.advertise<sensor_msgs::Imu>("sim_imu", 100);
     const Eigen::Vector4d noise(translation_noise, rotation_noise, trans_vel_noise, rot_vel_noise);
 
-    const double scan_interval = 1000.0 / lidar_fps;         // ms
-    const double odom_interval = 1000.0 / odom_fps;         // ms
+    const double scan_interval = 1. / display_rate * double(lidar_multiple);         // ms
 
     std::string pack_path = getPackagePath();
     printf("Package prefix: %s\n", pack_path.c_str());
@@ -113,13 +124,13 @@ int main(int argc, char** argv) {
         }
     }
     init_obs = obs;
-    double time_cnt = 1.0, time_sum = 0.0, scan_time_sum = 0.0, odom_time_sum = 0.0;
+    int scan_cnt = 0;
     Eigen::Vector3d angles(angle_min, angle_max, angle_incre);
     LidarSim ls(angles, lidar_noise);
     std::vector<Eigen::Vector3d> gtt;       // ground truth tragectory
     rosbag::Bag bag(pack_path + "/../../bags/" + bag_name + ".bag", rosbag::bagmode::Write);
     nav_msgs::Odometry odom;
-    TicToc timer;
+    TicToc timer, inner_timer;
     std::atomic_char status = 0x00;
     tf::StampedTransform odom_tf;
     double init_angle = angle;
@@ -146,16 +157,18 @@ int main(int argc, char** argv) {
     if (use_recorded_path)
         record_bag = true;
     size_t path_counter = 0;
-    int key_wait = (use_recorded_path == true) ? 15 : 3;
-    while (true) {
+    inner_timer.tic();
+    ros::Rate rate(display_rate);
+    translation.setZero();
+    delta_angle = 0.0;
+    while (ros::ok()) {
         cv::Point start(obs.x(), obs.y()), end(obs.x() + 20 * cos(angle), obs.y() + 20 * sin(angle));
         cv::arrowedLine(src, start, end, cv::Scalar(255, 0, 0), 2);
         cv::imshow("disp", src);
-        cv::waitKey(key_wait);
+        cv::waitKey(1);
         char key = status;
         controlFlow();
         bool collided = false;
-        timer.tic();
         std::vector<double> range;
         if (use_recorded_path == true) {
             if (path_counter >= path_vec.size()) {
@@ -165,12 +178,8 @@ int main(int argc, char** argv) {
             obs = path_vec[path_counter].block<2, 1>(1, 0);
             angle = path_vec[path_counter](3);
         }
-        ls.scan(obstacles, obs, range, src, angle, show_ray);
+        ls.scan(obstacles, obs, range, src, angle);
         plotSpeedInfo(src, trans_speed_amp, act_speed_x);
-        time_sum += timer.toc();
-        tf::StampedTransform gt_tf, scan_tf;
-        makeTransform(Eigen::Vector3d(init_obs.x() * 0.02, init_obs.y() * 0.02, init_angle), "map", "odom", odom_tf);
-        makeTransform(Eigen::Vector3d(obs.x() * 0.02, obs.y() * 0.02, angle), "map", "scan_gt", gt_tf);
         Eigen::Vector3d tmp_pose;
         if (use_recorded_path == false)
             tmp_pose << obs.x(), obs.y(), angle;
@@ -182,14 +191,12 @@ int main(int argc, char** argv) {
                 translation(0) = 0.0;
             collided = true;
         }
-        if (record_bag == true) {
-            scan_time_sum += timer.toc();
-            odom_time_sum += timer.toc();
+        if (record_bag == true)
             cv::circle(src, cv::Point(15, 15), 10, cv::Scalar(0, 0, 255), -1);
-        }
-        time_cnt += 1.0;
         obs += translation;
-        bool running = abs(speed[0]) > 1e-5;
+        tf::StampedTransform gt_tf;
+        makeTransform(Eigen::Vector3d(obs.x() * pix_resolution, obs.y() * pix_resolution, angle), "map", scan_topic, gt_tf);
+        bool running = (abs(speed[0]) > 1e-5) | (abs(speed[1]) > 1e-5);
         if (running && !collided) {
             act_speed_x = speed[0];
             act_speed_y = speed[1];
@@ -201,28 +208,39 @@ int main(int argc, char** argv) {
             if (abs(act_speed_y) < 1e-5)
                 act_speed_y = 0.0;
         }
-        double act_trans_x = 0.0, act_trans_y = 0.0;            // act_trans(相对) 与 translation(绝对) 是完全不同的概念
-        if (collided)
-            act_trans_x = act_trans_y = 0.0;
-        Eigen::Vector2d imu_trans(act_trans_x * 0.02, act_trans_y * 0.02);
+        double act_trans_x = act_speed_x, act_trans_y = act_speed_y;            // act_trans(相对) 与 translation(绝对) 是完全不同的概念
+        if (collided) {
+            act_trans_x = 0.0;
+            act_trans_y = 0.0;
+        }
+        Eigen::Vector2d imu_trans(act_trans_x * pix_resolution, act_trans_y * pix_resolution);
         Eigen::Vector3d delta_pose;
         delta_pose << imu_trans, delta_angle;
-        odomTFSimulation(noise, delta_pose, scan_tf, "odom", "scan");
+        odomTFSimulation(noise, delta_pose, odom_tf, odom_topic, scan_topic);
+        sensor_msgs::Imu imu_msg;
+        nav_msgs::Odometry odom;
+        double duration = makeImuMsg(imu_trans, scan_topic, angle, imu_msg, file);
+        makePerturbedOdom(noise, init_obs * pix_resolution, delta_pose, odom, init_angle, duration, odom_topic, scan_topic);
+        // odom_tf.
+        sendStampedTranform(gt_tf);
+        tf::StampedTransform odom2map = getOdom2MapTF(gt_tf, odom_tf, init_obs * pix_resolution, init_angle);
+        tf::Vector3 odom_translation = odom_tf.getOrigin();
+        printf("%lf, %lf, %lf, %lf, %lf\n", delta_pose.x(), delta_pose.y(), delta_pose.z(), odom_translation.x(), odom_translation.y());
+        sendStampedTranform(odom2map);
+
+        odom_pub.publish(odom);
+        imu_pub.publish(imu_msg);       // IMU will be published unconditionally
         if (record_bag == true) {
-            sendStampedTranform(scan_tf);
-            sendStampedTranform(odom_tf);
-            sendStampedTranform(gt_tf);
-            if (scan_time_sum > scan_interval) {
-                scan_time_sum = 0.0;
+            // sendStampedTranform(scan_tf);
+            scan_cnt += 1;
+            if (scan_cnt >= lidar_multiple) {
+                scan_cnt = 0;
                 sensor_msgs::LaserScan scan;
                 tf::tfMessage gt_tfmsg, scan_tfmsg;
-                makeScan(range, angles, scan, "scan", scan_interval / 1e3);
+                makeScan(range, angles, scan, scan_topic, scan_interval);
                 stampedTransform2TFMsg(gt_tf, gt_tfmsg);
-                stampedTransform2TFMsg(scan_tf, scan_tfmsg);
-                // bag.write("gt_tf", ros::Time::now(), gt_tfmsg);
-                bag.write("scan", ros::Time::now(), scan);
-                bag.write("tf", ros::Time::now(), scan_tfmsg);
-                scan.header.frame_id = "scan_gt";           // 可视化发布在真值坐标系下,但rosbag录制时在odom对应的scan系下
+                bag.write("tf", ros::Time::now(), gt_tfmsg);
+                bag.write(scan_topic, ros::Time::now(), scan);
                 scan_pub.publish(scan);
 
                 ros::Time now_stamp = ros::Time::now();
@@ -232,25 +250,19 @@ int main(int argc, char** argv) {
                     record_output << now_stamp.toNSec() << " " << tmp_pose(0) << " " << tmp_pose(1) << " " << tmp_pose(2) << std::endl;
                 }
             }
-            sensor_msgs::Imu imu_msg;
-            nav_msgs::Odometry odom;
-            double duration = makeImuMsg(imu_trans, "scan_gt", angle, imu_msg, file);
-            makePerturbedOdom(noise, delta_pose, odom, duration, "odom", "scan_gt");
-            if (odom_time_sum > odom_interval) {
-                odom_time_sum = 0.0;
-                odom_pub.publish(odom);
-                // bag.write("sim_odom", ros::Time::now(), odom);
-                // bag.write("sim_imu", ros::Time::now(), imu_msg);
-            }
-            imu_pub.publish(imu_msg);       // IMU will be published unconditionally
+            
+            if (bag_imu)
+                bag.write(imu_topic, ros::Time::now(), imu_msg);
+            if (bag_odom)
+                bag.write(odom_topic, ros::Time::now(), odom);
         }
         
         translation.setZero();
         delta_angle = 0.0;
         translation(0) += cos(angle) * speed[0];
         translation(1) += sin(angle) * speed[0];
-        translation(0) += sin(angle) * speed[1];
-        translation(1) += -cos(angle) * speed[1];
+        translation(0) += -sin(angle) * speed[1];
+        translation(1) += cos(angle) * speed[1];
         delta_angle = speed[2];
         angle += delta_angle;
         if (angle > M_PI)
@@ -259,6 +271,7 @@ int main(int argc, char** argv) {
             angle += 2 * M_PI;
         if (exit_flag)
             break;
+        rate.sleep();
     }
     bag.close();
     if (imu_plot == true) {
@@ -269,8 +282,6 @@ int main(int argc, char** argv) {
         record_output.close();
         printf("Trajectory record completed.\n");
     }
-    double mean_time = time_sum / time_cnt;
-    printf("Average running time: %.6lf ms, fps: %.6lf hz\n", mean_time, 1000.0 / mean_time);
     cv::destroyAllWindows();
     return 0;
 }
