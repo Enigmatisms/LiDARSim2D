@@ -5,16 +5,28 @@ double K_P = 0.2;
 double K_I = 0.0001;
 double K_D = 0.001;
 
-double goodAngle(double angle) {
-    if (angle > M_PI)
-        return angle - 2 * M_PI;
-    else if (angle < -M_PI)
-        return angle + 2 * M_PI;
-    return angle;
+void initializeReader(std::ifstream& recorded_path, std::vector<std::array<double, 8>>& path_vec, Eigen::Vector2d& init_obs, double& init_angle) {
+    std::string line;
+    getline(recorded_path, line);
+    if (line != "version: 0.0.1")
+        throw std::runtime_error("Recorded control input version incompatible.\n");
+    getline(recorded_path, line);
+    std::stringstream ss;
+    ss << line;
+    ss >> init_obs(0) >> init_obs(1) >> init_angle;
+    while (getline(recorded_path, line)) {
+        std::stringstream ss;
+        ss << line;
+        std::array<double, 8> pos;
+        ss >> pos[0] >> pos[1] >> pos[2] >> pos[3] >> pos[4] >> pos[5] >> pos[6] >> pos[7];
+        path_vec.push_back(pos);
+    }
+    recorded_path.close();
 }
 
-double quaterion2Angle(tf::Quaternion qt) {
-    return goodAngle(atan2(qt.z(), qt.w()) * 2.0);
+void initializeWriter(std::ofstream& record_output, const Eigen::Vector2d& init_obs, double init_angle) {
+    record_output << "version: 0.0.1" << std::endl;
+    record_output << init_obs.x() << " "  << init_obs.y() << " " << init_angle << std::endl;
 }
 
 void stampedTransform2TFMsg(const tf::StampedTransform& transf, tf::tfMessage& msg) {
@@ -51,7 +63,7 @@ tf::StampedTransform getOdom2MapTF(const tf::StampedTransform& scan2map, const t
 }
 
 void makePerturbedOdom(
-    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, 
+    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, Eigen::Vector3d noise, 
     nav_msgs::Odometry& odom, double init_angle, double duration, std::string frame_id, std::string child_id
 ) {
     /// @note since the input delta_p is in the map frame, no transformation is needed.
@@ -59,7 +71,6 @@ void makePerturbedOdom(
     static Eigen::Vector3d __pose__ = Eigen::Vector3d(init_pos.x(), init_pos.y(), init_angle);
     static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
     static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
-    // static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
     static double last_angle_vel = 0.0;
     Eigen::Matrix2d R, dR;
     dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
@@ -71,10 +82,10 @@ void makePerturbedOdom(
     odom.header.seq = cnt;
     odom.header.stamp = ros::Time::now();
     odom.child_frame_id = child_id;
-    odom.pose.pose.position.x = __pose__.x();
-    odom.pose.pose.position.y = __pose__.y();
+    odom.pose.pose.position.x = __pose__.x() + noise.x();
+    odom.pose.pose.position.y = __pose__.y() + noise.y();
     odom.pose.pose.position.z = 0.0;
-    const Eigen::Quaterniond qt(Eigen::AngleAxisd(__pose__.z(), Eigen::Vector3d::UnitZ()));
+    const Eigen::Quaterniond qt(Eigen::AngleAxisd(__pose__.z() + noise.z(), Eigen::Vector3d::UnitZ()));
     odom.pose.pose.orientation.w = qt.w();
     odom.pose.pose.orientation.x = qt.x();
     odom.pose.pose.orientation.y = qt.y();
@@ -84,8 +95,8 @@ void makePerturbedOdom(
     odom.pose.covariance.back() = std::pow(noise_level(1), 2);
     if (cnt > 5) {
         double angle_vel = delta_p(2) / duration;
-        odom.twist.twist.linear.x = (delta_p(0) / duration) + trans_noise(engine);
-        odom.twist.twist.linear.y = (delta_p(1) / duration) + trans_noise(engine);
+        odom.twist.twist.linear.x = (delta_p(0) / duration) + trans_noise(engine) * 32.;
+        odom.twist.twist.linear.y = (delta_p(1) / duration) + trans_noise(engine) * 32.;
         odom.twist.twist.linear.z = 0.0;
         odom.twist.twist.angular.x = 0.0;
         odom.twist.twist.angular.y = 0.0;
@@ -99,16 +110,17 @@ void makePerturbedOdom(
 }
 
 void odomTFSimulation(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d& delta_p, tf::StampedTransform& tf, 
-    std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    Eigen::Vector3d& noise, std::string frame_id, std::string child_id
 ) {
     static Eigen::Vector3d pose = Eigen::Vector3d::Zero();
     static std::default_random_engine engine(std::chrono::system_clock::now().time_since_epoch().count());
     static std::normal_distribution<double> trans_noise(0.0, noise_level(0));
     static std::normal_distribution<double> rot_noise(0.0, noise_level(1));
-    delta_p(0) = delta_p(0) + trans_noise(engine);
-    delta_p(1) = delta_p(1) + trans_noise(engine);
-    delta_p(2) += rot_noise(engine);
+    noise(0) = trans_noise(engine);
+    noise(1) = trans_noise(engine);
+    noise(2) = rot_noise(engine);
+    delta_p += noise;
     Eigen::Matrix2d R, dR;
     dR << cos(delta_p(2)), -sin(delta_p(2)), sin(delta_p(2)), cos(delta_p(2));
     R << cos(pose.z()), -sin(pose.z()), sin(pose.z()), cos(pose.z());
@@ -177,18 +189,18 @@ void makeScan(
 // trans 以及 speed 都是小车坐标系的(因为是IMU嘛)
 #include <algorithm>
 #include <deque>
-std::pair<double, double> makeImuMsg(
+void makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
+    double duration,
     sensor_msgs::Imu& msg,
     Eigen::Vector2d vel_var,
     Eigen::Vector2d ang_var
 ) {
     static int cnt = 0;
     static Eigen::Vector2d last_vel = Eigen::Vector2d::Zero(), last_acc = Eigen::Vector2d::Zero();
-    static double last_ang = 0.0, last_ang_vel = 0.0, last_duration = 0.0;
-    static ros::Time last_stamp = ros::Time::now();
+    static double last_ang = 0.0, last_ang_vel = 0.0;
     static std::deque<double> durations;
     msg.header.frame_id = cnt;
     msg.header.stamp = ros::Time::now();
@@ -199,17 +211,6 @@ std::pair<double, double> makeImuMsg(
 
     msg.linear_acceleration_covariance[0] = vel_var(0);
     msg.linear_acceleration_covariance[4] = vel_var(1);
-    double duration_raw = (msg.header.stamp - last_stamp).toSec();
-    double duration = 0.4 * duration_raw + 0.6 * last_duration;
-    durations.push_back(duration);
-    if (durations.size() > 5) {
-        durations.pop_front();
-        std::vector<double> vec(3);
-        std::partial_sort_copy(durations.begin(), durations.end(), vec.begin(), vec.end());
-        duration = vec.back();
-    }
-    last_duration = duration;
-    last_stamp = msg.header.stamp;
     Eigen::Vector2d acc = Eigen::Vector2d::Zero();
     double ang_vel = 0.0;
     if (cnt > 5) {
@@ -230,19 +231,18 @@ std::pair<double, double> makeImuMsg(
     msg.angular_velocity.y = 0.0;
     msg.angular_velocity.z = ang_vel;
     cnt++;
-    
-    return std::make_pair(duration, duration_raw);
 }
 
 double makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
+    double duration,
     sensor_msgs::Imu& msg,
     std::ofstream* file
 ) {
-    const auto& [duration, raw_du] = makeImuMsg(speed, frame_id, now_ang, msg, Eigen::Vector2d::Zero(), Eigen::Vector2d::Zero());
+    makeImuMsg(speed, frame_id, now_ang, duration, msg, Eigen::Vector2d::Zero(), Eigen::Vector2d::Zero());
     if (file != nullptr)
-        (*file) << msg.linear_acceleration.x << "," << msg.linear_acceleration.y << "," << duration << "," << raw_du << std::endl;
+        (*file) << msg.linear_acceleration.x << "," << msg.linear_acceleration.y << "," << duration << std::endl;
     return duration;
 }

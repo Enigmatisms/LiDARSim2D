@@ -19,9 +19,9 @@
     <param name="pix_resolution" value="0.02" type="double"/>               <!-- 1 pixel would represent <pix_resolution> meter, default 0.02m -->
 
     <!-- LiDAR settings -->
-    <param name="angle_min" value="-1.57" type="double"/>            <!-- LiDAR minimal angle -->
-    <param name="angle_max" value="1.57" type="double"/>             <!-- LiDAR maximal angle -->
-    <param name="angle_incre" value="0.0017453" type="double"/>     <!-- LiDAR angle increment -->
+    <param name="angle_min" value="-90" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="90" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_incre" value="0.25" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.03" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
     <param name="lidar_multiple" value="3" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 

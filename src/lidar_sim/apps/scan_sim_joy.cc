@@ -47,7 +47,7 @@ void controlFlow() {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "scan_joy");
     ros::NodeHandle nh;
-    cv::setNumThreads(4);
+    cv::setNumThreads(6);
     std::vector<std::vector<cv::Point>> obstacles;
 
 
@@ -60,9 +60,9 @@ int main(int argc, char** argv) {
     rot_vel_amp = nh.param<double>("/scan_joy/rot_vel_amp", 1.5);
     double init_x = nh.param<double>("/scan_joy/init_x", 367.0);
     double init_y = nh.param<double>("/scan_joy/init_y", 769.0);
-    double angle_min = nh.param<double>("/scan_joy/angle_min", -M_PI / 2);
-    double angle_max = nh.param<double>("/scan_joy/angle_max", M_PI / 2);
-    double angle_incre = nh.param<double>("/scan_joy/angle_incre", M_PI / 1800.0);
+    double angle_min = nh.param<double>("/scan_joy/angle_min", -180) * M_PI / 180.;
+    double angle_max = nh.param<double>("/scan_joy/angle_max", 180) * M_PI / 180.;
+    double angle_incre = nh.param<double>("/scan_joy/angle_incre", 0.25) * M_PI / 180.;
     double display_rate = nh.param<double>("/scan_joy/display_rate", 20.0);
 
     double translation_noise = nh.param<double>("/scan_joy/translation_noise", 0.08);
@@ -90,7 +90,8 @@ int main(int argc, char** argv) {
     imu_pub = nh.advertise<sensor_msgs::Imu>("sim_imu", 100);
     const Eigen::Vector4d noise(translation_noise, rotation_noise, trans_vel_noise, rot_vel_noise);
 
-    const double scan_interval = 1. / display_rate * double(lidar_multiple);         // ms
+    const double imu_interval = 1. / display_rate;         // ms
+    const double scan_interval = imu_interval * double(lidar_multiple);         // ms
 
     std::string pack_path = getPackagePath();
     printf("Package prefix: %s\n", pack_path.c_str());
@@ -214,18 +215,17 @@ int main(int argc, char** argv) {
             act_trans_y = 0.0;
         }
         Eigen::Vector2d imu_trans(act_trans_x * pix_resolution, act_trans_y * pix_resolution);
-        Eigen::Vector3d delta_pose;
+        Eigen::Vector3d delta_pose = Eigen::Vector3d::Zero(), noise_imu = Eigen::Vector3d::Zero();
         delta_pose << imu_trans, delta_angle;
-        odomTFSimulation(noise, delta_pose, odom_tf, odom_topic, scan_topic);
+        odomTFSimulation(noise, delta_pose, odom_tf, noise_imu, odom_topic, scan_topic);
         sensor_msgs::Imu imu_msg;
         nav_msgs::Odometry odom;
-        double duration = makeImuMsg(imu_trans, scan_topic, angle, imu_msg, file);
-        makePerturbedOdom(noise, init_obs * pix_resolution, delta_pose, odom, init_angle, duration, odom_topic, scan_topic);
+        double duration = makeImuMsg(imu_trans, scan_topic, angle, imu_interval, imu_msg, file);
+        makePerturbedOdom(noise, init_obs * pix_resolution, delta_pose, noise_imu, odom, init_angle, duration, odom_topic, scan_topic);
         // odom_tf.
         sendStampedTranform(gt_tf);
         tf::StampedTransform odom2map = getOdom2MapTF(gt_tf, odom_tf, init_obs * pix_resolution, init_angle);
         tf::Vector3 odom_translation = odom_tf.getOrigin();
-        printf("%lf, %lf, %lf, %lf, %lf\n", delta_pose.x(), delta_pose.y(), delta_pose.z(), odom_translation.x(), odom_translation.y());
         sendStampedTranform(odom2map);
 
         odom_pub.publish(odom);

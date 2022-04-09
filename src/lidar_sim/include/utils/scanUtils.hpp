@@ -15,15 +15,46 @@
 #include <sensor_msgs/LaserScan.h>
 #include <tf/transform_broadcaster.h>
 #include <sensor_msgs/Imu.h>
+#include <geometry_msgs/Quaternion.h>
 
 extern double K_P;
 extern double K_I;
 extern double K_D;
 
+template<typename T>
+std::string toString(T data) {
+    std::stringstream ss;
+    ss << data;
+    std::string s;
+    ss >> s;
+    return s;
+}
+
+inline double goodAngle(double angle) {
+    if (angle > M_PI)
+        return angle - 2 * M_PI;
+    else if (angle < -M_PI)
+        return angle + 2 * M_PI;
+    return angle;
+}
+
+template <typename T>
+inline double quaterion2Angle(T qt) {
+    return goodAngle(atan2(qt.z(), qt.w()) * 2.0);
+}
+
+template <>
+inline double quaterion2Angle<geometry_msgs::Quaternion>(geometry_msgs::Quaternion qt) {
+    return goodAngle(atan2(qt.z, qt.w) * 2.0);
+}
+
+void initializeReader(std::ifstream& recorded_path, std::vector<std::array<double, 8>>& path_vec, Eigen::Vector2d& init_obs, double& init_angle);
+void initializeWriter(std::ofstream& record_output, const Eigen::Vector2d& init_obs, double init_angle);
+
 // scan带有漂移的odometry transform
 void odomTFSimulation(
-    const Eigen::Vector4d& noise_level, Eigen::Vector3d& delta_p, tf::StampedTransform& tf, 
-    std::string frame_id, std::string child_id
+    const Eigen::Vector4d& noise_level, Eigen::Vector3d delta_p, tf::StampedTransform& tf, 
+    Eigen::Vector3d& noise, std::string frame_id, std::string child_id
 );
 
 tf::StampedTransform getOdom2MapTF(const tf::StampedTransform& scan2map, const tf::StampedTransform& scan2odom, const Eigen::Vector2d& init_obs, double init_angle);
@@ -42,7 +73,7 @@ void makeScan(
 /// @brief 2D Odometry with noise
 /// @param noise_level the first elem of this var is the noise level in translation, the second is for rotation
 void makePerturbedOdom(
-    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, 
+    const Eigen::Vector4d& noise_level, const Eigen::Vector2d& init_pos, Eigen::Vector3d delta_p, Eigen::Vector3d noise,
     nav_msgs::Odometry& odom, double init_angle, double duration, std::string frame_id, std::string child_id
 );
 
@@ -52,10 +83,11 @@ void sendStampedTranform(const tf::StampedTransform& _tf);
 
 double pidAngle(const Eigen::Vector2d& orient, const Eigen::Vector2d& obs, double now);
 
-std::pair<double, double> makeImuMsg(
+void makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
+    double duration,
     sensor_msgs::Imu& msg,
     Eigen::Vector2d vel_var,
     Eigen::Vector2d ang_var
@@ -65,6 +97,7 @@ double makeImuMsg(
     const Eigen::Vector2d& speed,
     std::string frame_id,
     double now_ang,
+    double duration,
     sensor_msgs::Imu& msg,
     std::ofstream* file = nullptr
 );
