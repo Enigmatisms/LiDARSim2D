@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="use_recorded_path" default="false"/>
+  <arg name="angle_span" default="120"/>
+  <arg name="angle_incre" default="0.25"/>
+  <arg name="lidar_noise" default="0.04"/>
+  <arg name="bag_name" default="hfps1"/>
+  <arg name="map_name" default="standard0"/>
+  <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/config.rviz"/>
+  <node pkg="lidar_sim" type="scan" name="scan" output="screen" required="true">
+    <!-- automatic settings -->
+    <param name="use_recorded_path" value="$(arg use_recorded_path)" type="bool"/>  <!-- Use recorded path to replay -->
+    <param name="angle_min" value="-$(arg angle_span)" type="double"/>              <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="$(arg angle_span)" type="double"/>               <!-- LiDAR maximal angle -->
+    <param name="angle_incre" value="$(arg angle_incre)" type="double"/>            <!-- LiDAR angle increment -->
+    <param name="lidar_noise" value="$(arg lidar_noise)" type="double"/>            <!-- LiDAR depth noise sigma coefficient -->
+    <param name="bag_name" value="$(arg bag_name)" type="string"/>                  <!-- saved rosbag name -->
+    <param name="map_name" value="$(arg map_name)" type="string"/>                  <!-- map to open -->
+
+    <!-- controller settings -->
+    <param name="enable_mouse_ctrl" value="true" type="bool"/>                      <!-- Mouse control enable -->
+    <param name="bag_imu" value="false" type="bool"/>                               <!-- Record imu data in bag or not -->
+    <param name="bag_odom" value="true" type="bool"/>                               <!-- Record odometry data in bag or not -->
+
+    <param name="trans_speed" value="1.7" type="double"/>                           <!-- scanner translation velocity: /2cm per frame -->
+    <param name="rot_vel" value="2" type="double"/>                                 <!-- scanner rotation velocity: /2cm per frame -->
+    <param name="init_x" value="0.0" type="double"/>                                <!-- Initial position x -->
+    <param name="init_y" value="0.0" type="double"/>                                <!-- Initial position y -->
+    <param name="kp" value="0.04" type="double"/>                                   <!-- Mouse control PID coefficient -->
+    <param name="ki" value="0.0001" type="double"/>                                 <!-- Mouse control PID coefficient -->
+    <param name="kd" value="0.001" type="double"/>                                  <!-- Mouse control PID coefficient -->
+  
+    <!-- Keyboard event stream: name of the device -->
+    <param name="dev_name" value="/dev/input/by-id/usb-Primax_Lenovo_Traditional_USB_Keyboard-event-kbd" type="string"/>
+    <param name="display_rate" value="96" type="double"/>                           <!-- LiDAR frame rate -->
+    <param name="pix_resolution" value="0.02" type="double"/>                       <!-- 1 pixel would represent <pix_resolution> meter, default 0.02m -->
+
+    <!-- LiDAR settings -->
+    <param name="lidar_multiple" value="2" type="int"/>                             <!-- display_rate / scan_fps = lidar_multiple -->
+
+    <!-- Odometry settings -->
+    <!-- Gaussian distribution sigma parameter -->
+    <param name="translation_noise" value="0.002" type="double"/>                   <!-- odometry translation noise sigma -->
+    <param name="rotation_noise" value="0.0003" type="double"/>                     <!-- odometry rotation noise sigma -->
+    <param name="trans_vel_noise" value="0.075" type="double"/>                     <!-- odometry translation velocity noise sigma -->
+    <param name="rot_vel_noise" value="0.01" type="double"/>                        <!-- odometry rotation velocity noise sigma -->
+
+    <!-- other settings -->
+    <param name="scan_topic" value="scan" type="string"/>                           <!-- topic name of scan -->
+    <param name="odom_topic" value="odom" type="string"/>                           <!-- topic name of odom -->
+    <param name="imu_topic" value="imu" type="string"/>                             <!-- topic name of imu -->
+    <param name="skip_selection" value="false" type="bool"/>                        <!-- fixed initial position -->
+    <param name="direct_pub" value="true" type="bool"/>                             <!-- publish ros message directly -->
+    <param name="imu_plot" value="false" type="bool"/>                              <!-- save imu output to file -->
+  </node>
+</launch>

@@ -20,7 +20,7 @@ cv::Mat src;
 Eigen::Vector2d obs, orient, translation, init_obs;
 double angle = 0.0;
 double delta_angle = 0.0, trans_speed = 2.0, act_speed = 0.0;
-bool obs_set = false, mouse_ctrl = true, record_bag = false;
+bool obs_set = false, mouse_ctrl = true, record_bag = true;
 
 void on_mouse(int event, int x, int y, int flags, void *ustc) {
     if (event == cv::EVENT_LBUTTONDOWN && obs_set == false) {
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
     }
     init_obs = obs;
     int scan_cnt = 0;
-    Eigen::Vector3d angles(angle_min * M_PI / 180., angle_max * M_PI / 180., angle_incre * M_PI / 180.);
+    Eigen::Vector3d angles(angle_min * M_PI / 180., angle_max * M_PI / 180., angle_incre * M_PI / 180. / 5.);
     LidarSim ls(angles, lidar_noise);
     std::vector<Eigen::Vector3d> gtt;       // ground truth tragectory
     std::string sub_fix;

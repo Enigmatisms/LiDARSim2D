@@ -37,8 +37,8 @@
     <param name="rot_vel_noise" value="0.01" type="double"/>        <!-- odometry rotation velocity noise sigma -->
 
     <!-- other settings -->
-    <param name="map_name" value="standard0" type="string"/>         <!-- map to open -->
-    <param name="bag_name" value="hfps1" type="string"/>             <!-- saved rosbag name -->
+    <param name="map_name" value="standard5" type="string"/>         <!-- map to open -->
+    <param name="bag_name" value="hfps5" type="string"/>             <!-- saved rosbag name -->
     <param name="scan_topic" value="scan" type="string"/>             <!-- topic name of scan -->
     <param name="odom_topic" value="odom" type="string"/>             <!-- topic name of odom -->
     <param name="imu_topic" value="imu" type="string"/>             <!-- topic name of imu -->
