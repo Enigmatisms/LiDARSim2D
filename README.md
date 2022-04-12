@@ -1,16 +1,18 @@
-# 2D LiDAR Simulator V 1.0
+# 2D LiDAR Simulator V 1
 
 ---
 
-2D LiDAR Simulator V 1.0🎇 is built upon the repository🎉🎉: [Github🔗: Enigamtisms/Volume2D](), which is, recently, updated. This simulator contains: 
+2D LiDAR Simulator V 1🎇 is built upon the repository🎉🎉: [Github🔗: Enigamtisms/Volume](https://github.com/Enigmatisms/Volume). This simulator contains: 
 
-- **map editor**🎛 (with which you can build your own map), 
+- **map editor**🎛 (with which you can build your own map)
 - **ROS integration**🚀:
   - rosbag generation without publishing
   - rviz visualization for LaserScan, tf, Odometry (perturbed)
   - Direct message publishing
 - **Easy-to-use**👌 roslaunch **parameter setting**🗝 for simulated LiDAR and other perimeter settings.
-- Fluent opencv-based k**eyboard / mouse control**⌨🖱 with **high FPS**⏲, visualizing free space and scan.
+- Fluent opencv-based **keyboard / mouse control / joystick control**⌨🖱 with **high FPS**⏲, visualizing free space and scan.
+- **Other sensors:** **Odometry** (`nav_msgs::Odometry`) and IMU (`sensor_msgs::Imu`) output are supported. Ground truth tf is also published.
+- **<u>Trajectory saving</u>**. Manually running the simulator could be annoying, yet once the trajectory created by the user is saved, you can run the same trajectory with different LiDAR and odometry settings automatically.
 
 Some demo pictures are shown as follows:
 
@@ -22,13 +24,14 @@ Some demo pictures are shown as follows:
 
 ## Dependencies
 
-The implementations are done in Ubuntu 18.04, under some of the key libraries:
+The implementations are done in Ubuntu 18.04 (partially 20.04, therefore both can be used), under some of the key libraries:
 
-| Library name | Version                    |
-| ------------ | -------------------------- |
-| ROS          | Melodic (for Ubuntu 18.04) |
-| OpenCV       | 3.x.x or above             |
-| Eigen        | Usually bond with ROS      |
+| Library name    | Version                                                      |
+| --------------- | ------------------------------------------------------------ |
+| ROS             | Melodic (for Ubuntu 18.04) and Noetic (for Ubuntu 20.04) are tested |
+| OpenCV          | 3.x.x or above, 4.+ recommended                              |
+| Eigen           | Usually bond with ROS                                        |
+| CUDA (Optional) | To enable particle filter, one can use CUDA 10.2 (with eigen 3.3.4) or CUDA 11+ with (eigen 3.4.0+) |
 
 For compilation, C++ 17 standards are recommended.
 
@@ -46,7 +49,7 @@ cd LiDARSim2D
 Usually, for a ROS package we can compile the code via `catkin_make`. Yet, sometimes we want to compile A debug version, i.e. `-DCMAKE_BUILD_TYPE=DEBUG` and a release version at the same time for debugging convenience, therefore, `catkin_make` might not be quick to use. I have written a shell script named `make.sh` in the root directory, you can thereby run:
 
 ```shell
-sudo chmod 777 ./make.sh
+sudo chmod +x ./make.sh
 ./make.sh <thread num for compilation> <if not empty, DCMAKE_BUILD_TYPE=DEBUG>
 ```
 
