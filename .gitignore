@@ -5,6 +5,7 @@ build_debug/*
 data/*
 bags/*
 .catkin_workspace
+**/*.db*
+*/.vscode
 
 !*.json
-!bags/standard3.bag

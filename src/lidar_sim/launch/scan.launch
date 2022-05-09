@@ -5,9 +5,10 @@
     <!-- controller settings -->
 
     <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
-    <param name="use_recorded_path" value="true" type="bool"/>     <!-- Use recorded path to replay -->
+    <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
     <param name="bag_imu" value="false" type="bool"/>               <!-- Record imu data in bag or not -->
-    <param name="bag_odom" value="false" type="bool"/>              <!-- Record odometry data in bag or not -->
+    <param name="bag_odom" value="true" type="bool"/>              <!-- Record odometry data in bag or not -->
+    <param name="output_directory" value="/home/stn/Dataset/slam_loc/" type="string"/>  <!-- recorded bag output directory -->
 
     <param name="trans_speed" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
     <param name="rot_vel" value="2" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
@@ -23,18 +24,18 @@
     <param name="pix_resolution" value="0.02" type="double"/>               <!-- 1 pixel would represent <pix_resolution> meter, default 0.02m -->
 
     <!-- LiDAR settings -->
-    <param name="angle_min" value="-100" type="double"/>            <!-- LiDAR minimal angle -->
-    <param name="angle_max" value="100" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_min" value="-120" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="120" type="double"/>             <!-- LiDAR maximal angle -->
     <param name="angle_incre" value="0.25" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.04" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
-    <param name="lidar_multiple" value="2" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
+    <param name="lidar_multiple" value="3" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 
     <!-- Odometry settings -->
     <!-- Gaussian distribution sigma parameter -->
-    <param name="translation_noise" value="0.002" type="double"/>    <!-- odometry translation noise sigma -->
-    <param name="rotation_noise" value="0.0003" type="double"/>      <!-- odometry rotation noise sigma -->
-    <param name="trans_vel_noise" value="0.075" type="double"/>     <!-- odometry translation velocity noise sigma -->
-    <param name="rot_vel_noise" value="0.01" type="double"/>        <!-- odometry rotation velocity noise sigma -->
+    <param name="translation_noise" value="0.0" type="double"/>    <!-- odometry translation noise sigma -->
+    <param name="rotation_noise" value="0.0" type="double"/>      <!-- odometry rotation noise sigma -->
+    <param name="trans_vel_noise" value="0.0" type="double"/>     <!-- odometry translation velocity noise sigma -->
+    <param name="rot_vel_noise" value="0.0" type="double"/>        <!-- odometry rotation velocity noise sigma -->
 
     <!-- other settings -->
     <param name="map_name" value="standard5" type="string"/>         <!-- map to open -->

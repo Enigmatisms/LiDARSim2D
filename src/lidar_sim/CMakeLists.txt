@@ -113,6 +113,7 @@ target_link_libraries(scan
   ${OpenCV_LIBS}
   ${catkin_LIBRARIES}
   pthread
+  stdc++fs
 )
 
 add_executable(scan_joy apps/scan_sim_joy.cc

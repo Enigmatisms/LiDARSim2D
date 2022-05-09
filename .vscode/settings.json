@@ -100,7 +100,8 @@
         "shared_mutex": "cpp",
         "bit": "cpp",
         "__nullptr": "cpp",
-        "__locale": "cpp"
+        "__locale": "cpp",
+        "ios": "cpp"
     },
     "git.ignoreLimitWarning": true,
     "python.autoComplete.extraPaths": [

@@ -85,4 +85,4 @@ def plotKinectData():
     plotKinetic(data)
 
 if __name__ == "__main__":
-    plotOdomData()
+    plotKinectData()

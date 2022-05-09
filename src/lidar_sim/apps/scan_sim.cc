@@ -14,13 +14,13 @@
 #include "utils/consts.h"
 #include "volume/lidarSim.hpp"
 #include <iostream>
-#define DEBUG_OUTPUT
+// #define DEBUG_OUTPUT
 
 cv::Mat src;
 Eigen::Vector2d obs, orient, translation, init_obs;
 double angle = 0.0;
 double delta_angle = 0.0, trans_speed = 2.0, act_speed = 0.0;
-bool obs_set = false, mouse_ctrl = true, record_bag = true;
+bool obs_set = false, mouse_ctrl = true, record_bag = true, initial_saved = false;
 
 void on_mouse(int event, int x, int y, int flags, void *ustc) {
     if (event == cv::EVENT_LBUTTONDOWN && obs_set == false) {
@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
     std::string imu_topic = nh.param<std::string>("/scan/odom_topic", "imu");
     std::string bag_name = nh.param<std::string>("/scan/bag_name", "standard0");
     std::string dev_name = nh.param<std::string>("/scan/dev_name", "/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd");
+    std::string output_directory = nh.param<std::string>("/scan/output_directory", "");
     trans_speed = nh.param<double>("/scan/trans_speed", 4.0);
     double rot_vel = nh.param<double>("/scan/rot_vel", 1.0);
     double init_x = nh.param<double>("/scan/init_x", 367.0);
@@ -147,6 +148,7 @@ int main(int argc, char** argv) {
                 return 0;
         }
     }
+    
     init_obs = obs;
     int scan_cnt = 0;
     Eigen::Vector3d angles(angle_min * M_PI / 180., angle_max * M_PI / 180., angle_incre * M_PI / 180. / 5.);
@@ -154,10 +156,20 @@ int main(int argc, char** argv) {
     std::vector<Eigen::Vector3d> gtt;       // ground truth tragectory
     std::string sub_fix;
     if (lidar_noise < 0.05)
-        sub_fix = ".bag";
+        sub_fix = "";
     else
-        sub_fix = "h.bag";
-    rosbag::Bag bag(pack_path + "/../../bags/" + bag_name + "_" + toString(angle_max - angle_min) + "_" + toString(angle_incre) + sub_fix, rosbag::bagmode::Write);
+        sub_fix = "h";
+    std::string output_file_name = bag_name + "_" + toString(angle_max - angle_min) + "_" + toString(angle_incre) + sub_fix;
+    std::string screen_shot_outpath;
+    std::string output_bag_path;
+    if (output_directory.length()) {
+        output_bag_path = output_directory + output_file_name + "/data.bag";
+        screen_shot_outpath = output_directory + output_file_name + "/loc_initial_%Y-%m-%d-%H-%M-%S.png";
+    } else {
+        screen_shot_outpath = pack_path + "/../../bags/" + "loc_initial_%Y-%m-%d-%H-%M-%S.png";
+        output_bag_path = pack_path + "/../../bags/" + output_file_name + ".bag";
+    }
+    rosbag::Bag bag(output_bag_path, rosbag::bagmode::Write);
     nav_msgs::Odometry odom;
     TicToc timer;
     std::atomic_char status = 0x00;
@@ -191,6 +203,10 @@ int main(int argc, char** argv) {
         cv::Point start(obs.x(), obs.y()), end(obs.x() + 20 * cos(angle), obs.y() + 20 * sin(angle));
         cv::arrowedLine(src, start, end, cv::Scalar(255, 0, 0), 2);
         cv::imshow("disp", src);
+        if (initial_saved == false) {
+            initial_saved = true;
+            cv::imwrite(screen_shot_outpath, src);
+        }
         cv::waitKey(1);
         char key = status;
         controlFlow(key);
@@ -284,8 +300,6 @@ int main(int argc, char** argv) {
                 makeScan(range, angles, scan, scan_topic, scan_interval);
                 stampedTransform2TFMsg(gt_tf, gt_tfmsg);
                 // odometry data used for LiDAR should not be biased by init_obs
-                odom.pose.pose.position.x -= init_obs.x() * pix_resolution;
-                odom.pose.pose.position.y -= init_obs.y() * pix_resolution;
                 // Consider that init_angle is always (if the code is not modified) 0., angle is unbiased
                 #ifdef DEBUG_OUTPUT
                     if (record_bag == true) {
@@ -300,6 +314,8 @@ int main(int argc, char** argv) {
                 bag.write(scan_topic, now_stamp, scan);
                 scan_pub.publish(scan);
             }
+            odom.pose.pose.position.x -= init_obs.x() * pix_resolution;
+            odom.pose.pose.position.y -= init_obs.y() * pix_resolution;
             
             if (bag_imu)
                 bag.write(imu_topic, now_stamp, imu_msg);

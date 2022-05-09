@@ -6,6 +6,7 @@
   <arg name="lidar_noise" default="0.04"/>
   <arg name="bag_name" default="hfps1"/>
   <arg name="map_name" default="standard0"/>
+  <arg name="output_directory" default="/home/stn/Dataset/slam_loc/"/>
   <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/config.rviz"/>
   <node pkg="lidar_sim" type="scan" name="scan" output="screen" required="true">
     <!-- automatic settings -->
@@ -16,6 +17,7 @@
     <param name="lidar_noise" value="$(arg lidar_noise)" type="double"/>            <!-- LiDAR depth noise sigma coefficient -->
     <param name="bag_name" value="$(arg bag_name)" type="string"/>                  <!-- saved rosbag name -->
     <param name="map_name" value="$(arg map_name)" type="string"/>                  <!-- map to open -->
+    <param name="output_directory" value="$(arg output_directory)" type="string"/>  <!-- recorded bag output directory -->
 
     <!-- controller settings -->
     <param name="enable_mouse_ctrl" value="true" type="bool"/>                      <!-- Mouse control enable -->
