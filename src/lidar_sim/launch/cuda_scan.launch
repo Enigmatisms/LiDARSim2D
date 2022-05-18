@@ -16,7 +16,8 @@
     <param name="kd" value="0.001" type="double"/>                  <!-- Mouse control PID coefficient -->
   
     <!-- Keyboard event stream: name of the device -->
-    <param name="dev_name" value="/dev/input/by-id/usb-Primax_Lenovo_Traditional_USB_Keyboard-event-kbd" type="string"/>
+    <!-- <param name="dev_name" value="/dev/input/by-id/usb-Primax_Lenovo_Traditional_USB_Keyboard-event-kbd" type="string"/> -->
+    <param name="dev_name" value="/dev/input/by-path/platform-i8042-serio-0-event-kbd" type="string"/>
     <param name="display_rate" value="96" type="double"/>                  <!-- LiDAR frame rate -->
     <param name="pix_resolution" value="0.02" type="double"/>               <!-- 1 pixel would represent <pix_resolution> meter, default 0.02m -->
 
@@ -28,7 +29,7 @@
     <param name="lidar_multiple" value="2" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 
     <!-- other settings -->
-    <param name="map_name" value="standard4" type="string"/>         <!-- map to open -->
+    <param name="map_name" value="standard3" type="string"/>         <!-- map to open -->
     <param name="bag_name" value="hfps0" type="string"/>             <!-- saved rosbag name -->
     <param name="scan_topic" value="scan" type="string"/>             <!-- topic name of scan -->
     <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->

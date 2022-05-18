@@ -69,7 +69,6 @@ __host__ double rayTraceRenderCpp(const Eigen::Vector3d& lidar_param, const Eige
     preProcess<<<num_blocks, 256>>>(sid_ptr, eid_ptr, angles_ptr, dists_ptr, flag_ptr, ray_num, 
                 total_seg_num, lidar_param.x(), lidar_param.z(), pose.x(), pose.y(), angle);
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-    double result = timer.toc();
     cudaStream_t streams[8];
     for (short i = 0; i < 8; i++)
         cudaStreamCreateWithFlags(&streams[i],cudaStreamNonBlocking);
@@ -94,5 +93,6 @@ __host__ double rayTraceRenderCpp(const Eigen::Vector3d& lidar_param, const Eige
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
     // 注意range的大小应该提前确定
     CUDA_CHECK_RETURN(cudaMemcpy(range.data(), final_sparse_ranges, sizeof(float) * ray_num / 3, cudaMemcpyDeviceToHost));
+    double result = timer.toc();
     return result;
 }

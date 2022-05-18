@@ -4,7 +4,7 @@
 #include <bitset>
 #include "utils/keyCtrl.hpp"
 
-const std::string dev_name = "/dev/input/by-id/usb-Keychron_Keychron_K2-event-kbd";
+const std::string dev_name = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "key_test");
