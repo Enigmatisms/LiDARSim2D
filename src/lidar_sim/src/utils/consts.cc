@@ -48,6 +48,9 @@ const std::array<cv::Point, 9> west_wall = {
 //     cv::Point(-1200, 240), cv::Point(-1200, 135), cv::Point(-1200, -1200)
 // };
 
+const cv::Rect walls(0, 0, 1200, 900);
+const cv::Rect floors(30, 30, 1140, 840);
+
 std::string getPackagePath() {
     char string[256] = "rospack find lidar_sim";
     FILE* fp = popen(string, "r");

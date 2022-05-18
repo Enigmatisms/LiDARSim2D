@@ -4,19 +4,19 @@
 #include "utils/consts.h"
 #include "utils/LOG.hpp"
 
-const cv::Rect walls(0, 0, 1200, 900);
-const cv::Rect floors(30, 30, 1140, 840);
 constexpr double luminous_range = 2.5e5;
 
-void Volume::visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst) const {
+void Volume::visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst, bool draw_viz) const {
     cv::rectangle(dst, walls, cv::Scalar(10, 10, 10), -1);
     cv::rectangle(dst, floors, cv::Scalar(40, 40, 40), -1);
-    std::vector<std::vector<cv::Point>> polygons;
-    for (const Object& obj: objs)
-        obj.makePolygons4Render(obs, polygons);
-    cv::drawContours(dst, polygons, -1, cv::Scalar(254, 254, 254), -1);
     cv::drawContours(dst, _obstcs, -1, cv::Scalar(10, 10, 10), -1);
-    prettier(dst, obs);
+    if (draw_viz == true) {
+        std::vector<std::vector<cv::Point>> polygons;
+        for (const Object& obj: objs)
+            obj.makePolygons4Render(obs, polygons);
+        cv::drawContours(dst, polygons, -1, cv::Scalar(254, 254, 254), -1);
+        prettier(dst, obs);
+    } 
     cv::circle(dst, cv::Point(obs.x(), obs.y()), 4, cv::Scalar(0, 255, 255), -1);
     cv::circle(dst, cv::Point(obs.x(), obs.y()), 7, cv::Scalar(40, 40, 40), 2);
 }

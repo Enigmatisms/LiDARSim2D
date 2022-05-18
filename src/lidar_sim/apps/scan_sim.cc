@@ -172,8 +172,7 @@ int main(int argc, char** argv) {
     rosbag::Bag bag(output_bag_path, rosbag::bagmode::Write);
     nav_msgs::Odometry odom;
     TicToc timer;
-    std::atomic_char status = 0x00;
-    KeyCtrl kc(dev_name, status);
+    KeyCtrl kc(dev_name);
     std::thread worker(&KeyCtrl::onKeyThread, &kc);
     tf::StampedTransform odom_tf;
     double init_angle = angle;

@@ -1,11 +1,13 @@
 #include <unordered_map>
 #include "utils/keyCtrl.hpp"
 
+std::atomic_char status(0x00);
+
 const std::unordered_map<int, int> mapping = {
     {458778, 0}, {458756, 1}, {458774, 2}, {458759, 3}, {458773, 4}, {458770, 5}, {458771, 6}, {458793, 7},
 }; // w a s d r o p [esc]
 
-KeyCtrl::KeyCtrl(std::string dev_name, std::atomic_char& stat): status(stat) {
+KeyCtrl::KeyCtrl(std::string dev_name) {
     constexpr char name[13] = "K_MEDIUMRAW";
     const char *device = NULL;
     if ((getuid()) != 0) {          // admin clearance

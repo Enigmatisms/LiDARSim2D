@@ -6,8 +6,6 @@
 
 constexpr double deg2rad = M_PI / 180.0; 
 double angle_incre = 0.0;
-const cv::Rect walls(0, 0, 1200, 900);
-const cv::Rect floors(30, 30, 1140, 840);
 const std::array<cv::Scalar, 3> colors = {
     cv::Scalar(0, 255, 0), cv::Scalar(0, 255, 255), cv::Scalar(0, 0, 255)
 };
@@ -17,10 +15,7 @@ std::vector<cv::Point> obstacle;
 cv::Point start_point(0, 0);
 cv::Mat src;
 bool start_set = false, refresh_flag = false;
-// bool straight_line_mode = false;
-// bool rectangle_mode = false;
-// bool circle_mode = false;
-std::array<bool, 3> status = {false, false};
+std::array<bool, 3> mode_status = {false, false, false};
 int last_set = -1;
 int CIRCLE_RESOLUTION = 300;
 
@@ -31,12 +26,12 @@ void reset() {
 }
 
 void statusSet(int id) {
-    status[id] = !status[id];
+    mode_status[id] = !mode_status[id];
     last_set = -1;
-    if (status[id] == true) {
+    if (mode_status[id] == true) {
         for (int i = 0; i < 3; i++) {
             if (i == id) continue;
-            status[i] = false;
+            mode_status[i] = false;
         }
         last_set = id;
     }
@@ -46,7 +41,7 @@ void statusSet(int id) {
 
 void on_mouse(int event, int x,int y, int flags, void *ustc) {
     if (event == cv::EVENT_MOUSEMOVE) {
-        if (status[0] == true && start_set == true) {
+        if (mode_status[0] == true && start_set == true) {
             refresh_flag = true;
             const cv::Point& last_point = obstacle.back();
             const cv::Point diff = cv::Point(x, y) - last_point;
@@ -54,21 +49,21 @@ void on_mouse(int event, int x,int y, int flags, void *ustc) {
                 y = last_point.y;
             else x = last_point.x;
             tasks[1] = cv::Point(x, y);
-        } else if ((status[1] == true || status[2] == true) && start_set == true) {
+        } else if ((mode_status[1] == true || mode_status[2] == true) && start_set == true) {
             refresh_flag = true;
             tasks[1] = cv::Point(x, y);
         }
     }
     if (event == cv::EVENT_LBUTTONUP) {
         bool emplace_flag = true;
-        if (status[0] == true && start_set) {
+        if (mode_status[0] == true && start_set) {
             const cv::Point& last_point = obstacle.back();
             const cv::Point diff = cv::Point(x, y) - last_point;
             if (std::abs(diff.x) > std::abs(diff.y))
                 y = last_point.y;
             else x = last_point.x;
             tasks[0] = cv::Point(x, y);
-        } else if (status[1] == true && start_set) {
+        } else if (mode_status[1] == true && start_set) {
             emplace_flag = false;
             const cv::Point diff = cv::Point(x, y) - start_point;
             obstacle.push_back(start_point);
@@ -86,7 +81,7 @@ void on_mouse(int event, int x,int y, int flags, void *ustc) {
             printf("One obstacle is added.\n");
             reset();
             return;
-        } else if (status[2] == true && start_set) {
+        } else if (mode_status[2] == true && start_set) {
             emplace_flag = false;
             const cv::Point diff = cv::Point(x, y) - start_point;
             const double radius = std::sqrt(diff.dot(diff));
@@ -135,7 +130,7 @@ int main(int argc, char** argv) {
             cv::rectangle(src, walls, cv::Scalar(10, 10, 10), -1);
             cv::rectangle(src, floors, cv::Scalar(100, 100, 100), -1);
             for (int i = 0; i < 3; i++) {
-                if (status[i]) 
+                if (mode_status[i]) 
                     cv::circle(src, cv::Point(15 + i * 30, 15), 10, colors[i], -1);
             }
         }

@@ -8,8 +8,7 @@ const std::string dev_name = "/dev/input/by-id/usb-Keychron_Keychron_K2-event-kb
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "key_test");
-    std::atomic_char status = 0x00;
-    KeyCtrl kc(dev_name, status);
+    KeyCtrl kc(dev_name);
     std::thread th(&KeyCtrl::onKeyThread, &kc);
     th.detach();
     char last_val = status;

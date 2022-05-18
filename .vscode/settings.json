@@ -101,7 +101,12 @@
         "bit": "cpp",
         "__nullptr": "cpp",
         "__locale": "cpp",
-        "ios": "cpp"
+        "ios": "cpp",
+        "__node_handle": "cpp",
+        "future": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp"
     },
     "git.ignoreLimitWarning": true,
     "python.autoComplete.extraPaths": [

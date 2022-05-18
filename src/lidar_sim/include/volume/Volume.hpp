@@ -5,9 +5,6 @@
 
 typedef std::vector<cv::Point> Obstacle;
 
-extern const cv::Rect walls;
-extern const cv::Rect floors;
-
 class Volume {
 public:
     Volume(): heap(ObjCompFunctor(objs)) {}
@@ -17,7 +14,7 @@ public:
 
     void calculateVisualSpace(const std::vector<std::vector<Eigen::Vector2d>>& _obstcs, Eigen::Vector2d obs, cv::Mat& src);
     
-    void visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst) const;
+    void visualizeVisualSpace(const std::vector<Obstacle>& _obstcs, const Eigen::Vector2d& obs, cv::Mat& dst, bool draw_viz = true) const;
 
     void simplePreVisualize(cv::Mat& src, const cv::Point& obs) const;
 
