@@ -8,7 +8,7 @@
     <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
     <param name="bag_imu" value="false" type="bool"/>               <!-- Record imu data in bag or not -->
     <param name="bag_odom" value="true" type="bool"/>              <!-- Record odometry data in bag or not -->
-    <param name="output_directory" value="/home/stn/Dataset/slam_loc/" type="string"/>  <!-- recorded bag output directory -->
+    <param name="output_directory" value="" type="string"/>  <!-- recorded bag output directory -->
 
     <param name="trans_speed" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
     <param name="rot_vel" value="2" type="double"/>                 <!-- scanner rotation velocity: /2cm per frame -->
@@ -28,7 +28,7 @@
     <param name="angle_max" value="120" type="double"/>             <!-- LiDAR maximal angle -->
     <param name="angle_incre" value="0.25" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.04" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
-    <param name="lidar_multiple" value="3" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
+    <param name="lidar_multiple" value="2" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 
     <!-- Odometry settings -->
     <!-- Gaussian distribution sigma parameter -->
@@ -38,8 +38,8 @@
     <param name="rot_vel_noise" value="0.0" type="double"/>        <!-- odometry rotation velocity noise sigma -->
 
     <!-- other settings -->
-    <param name="map_name" value="standard5" type="string"/>         <!-- map to open -->
-    <param name="bag_name" value="hfps5" type="string"/>             <!-- saved rosbag name -->
+    <param name="map_name" value="standard0" type="string"/>         <!-- map to open -->
+    <param name="bag_name" value="hfps0" type="string"/>             <!-- saved rosbag name -->
     <param name="scan_topic" value="scan" type="string"/>             <!-- topic name of scan -->
     <param name="odom_topic" value="odom" type="string"/>             <!-- topic name of odom -->
     <param name="imu_topic" value="imu" type="string"/>             <!-- topic name of imu -->

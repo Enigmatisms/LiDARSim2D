@@ -25,11 +25,7 @@ __device__ __forceinline__ void initialize(const float* const segments, const Ve
     const Vec2f pt1(ptr[0], ptr[1]), pt2(ptr[2], ptr[3]);
     const Vec2f norm(pt1.y - pt2.y, pt2.x - pt1.x);
     const Vec2f ctr_vec = (pt1 + pt2) * 0.5 - Vec2f(obs->x, obs->y);
-    if (ctr_vec.x * norm.x + ctr_vec.y * norm.y > 0.0) {
-        flags[id] = false;
-    } else {
-        flags[id] = true;
-    }
+    flags[id] = (ctr_vec.x * norm.x + ctr_vec.y * norm.y <= 0.0);
 }
 
 template<bool singl>
@@ -117,7 +113,7 @@ __device__ void singleSegZbuffer(
             } else {
                 offset = getRangeOffset(s_id, i, range_num_1);
             }
-            atomicMin(range + offset, range_int);         // 原子压入
+             (range + offset, range_int);         // 原子压入
             angle += ang_incre;
         }
         angle = _M_PI;

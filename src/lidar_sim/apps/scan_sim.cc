@@ -164,9 +164,9 @@ int main(int argc, char** argv) {
     std::string output_bag_path;
     if (output_directory.length()) {
         output_bag_path = output_directory + output_file_name + "/data.bag";
-        screen_shot_outpath = output_directory + output_file_name + "/loc_initial_%Y-%m-%d-%H-%M-%S.png";
+        screen_shot_outpath = output_directory + output_file_name + "/loc_initial.png";
     } else {
-        screen_shot_outpath = pack_path + "/../../bags/" + "loc_initial_%Y-%m-%d-%H-%M-%S.png";
+        screen_shot_outpath = pack_path + "/../../bags/" + "loc_initial.png";
         output_bag_path = pack_path + "/../../bags/" + output_file_name + ".bag";
     }
     rosbag::Bag bag(output_bag_path, rosbag::bagmode::Write);
@@ -183,10 +183,12 @@ int main(int argc, char** argv) {
     std::ofstream record_output;
     std::vector<std::array<double, 8>> path_vec;
     if (use_recorded_path == true) {
-        recorded_path.open(pack_path + "/../../bags/" + bag_name + ".lgp", std::ios::in);
+        recorded_path.open(pack_path + "/../../bags/" + bag_name + "_slam.lgp", std::ios::in);
         initializeReader(recorded_path, path_vec, init_obs, init_angle);
+        obs = init_obs;
+        angle = init_angle;
     } else {
-        record_output.open(pack_path + "/../../bags/" + bag_name + ".lgp", std::ios::out);
+        record_output.open(pack_path + "/../../bags/" + bag_name + "_slam.lgp", std::ios::out);
         initializeWriter(record_output, init_obs, init_angle);
     }
     if (use_recorded_path)
