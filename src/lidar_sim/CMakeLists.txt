@@ -166,6 +166,12 @@ install(DIRECTORY launch/
 )
 
 if (COMPILE_CUDA)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD 14)
+  set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
+  set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+  set(CMAKE_CUDA_COMPILER "/usr/local/cuda-11.3/bin")
+  add_compile_options(-Wno-deprecated-declarations)
   cuda_add_executable(cuda_test
     apps/cudaTest.cu
     src/utils/consts.cc
@@ -178,6 +184,25 @@ if (COMPILE_CUDA)
   set_property(TARGET cuda_test PROPERTY CXX_STANDARD 14)
 
   target_link_libraries(cuda_test
+    ${OpenCV_LIBS}
+    ${Boost_LIBRARIES}
+    ${catkin_LIBRARIES}
+  )
+
+  cuda_add_executable(cuda_scan
+    apps/scan_sim_cuda.cu
+    src/utils/consts.cc
+    src/utils/mapEdit.cc
+    src/utils/keyCtrl.cc
+    src/utils/scanUtils.cc
+    src/utils/vizUtils.cc
+    src/cuda/ray_tracer.cu
+    src/cuda/host_func.cu
+  )
+  enable_language(CUDA)
+  set_property(TARGET cuda_scan PROPERTY CXX_STANDARD 14)
+
+  target_link_libraries(cuda_scan
     ${OpenCV_LIBS}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}

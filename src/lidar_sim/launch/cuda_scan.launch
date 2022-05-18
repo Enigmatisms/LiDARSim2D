@@ -1,13 +1,10 @@
 <?xml version="1.0"?>
 <launch>
   <node name="rviz_slam" pkg="rviz" type="rviz" args="-d $(find lidar_sim)/launch/config.rviz" />
-  <node pkg="lidar_sim" type="scan" name="scan" output="screen">
+  <node pkg="lidar_sim" type="cuda_scan" name="cuda_scan" output="screen">
     <!-- controller settings -->
 
     <param name="enable_mouse_ctrl" value="true" type="bool"/>     <!-- Mouse control enable -->
-    <param name="use_recorded_path" value="false" type="bool"/>     <!-- Use recorded path to replay -->
-    <param name="bag_imu" value="false" type="bool"/>               <!-- Record imu data in bag or not -->
-    <param name="bag_odom" value="true" type="bool"/>              <!-- Record odometry data in bag or not -->
     <param name="output_directory" value="" type="string"/>  <!-- recorded bag output directory -->
 
     <param name="trans_speed" value="1.5" type="double"/>           <!-- scanner translation velocity: /2cm per frame -->
@@ -26,25 +23,15 @@
     <!-- LiDAR settings -->
     <param name="angle_min" value="-120" type="double"/>            <!-- LiDAR minimal angle -->
     <param name="angle_max" value="120" type="double"/>             <!-- LiDAR maximal angle -->
-    <param name="angle_incre" value="0.5" type="double"/>     <!-- LiDAR angle increment -->
+    <param name="angle_incre" value="0.25" type="double"/>     <!-- LiDAR angle increment -->
     <param name="lidar_noise" value="0.04" type="double"/>          <!-- LiDAR depth noise sigma coefficient -->
     <param name="lidar_multiple" value="2" type="int"/>              <!-- display_rate / scan_fps = lidar_multiple -->
 
-    <!-- Odometry settings -->
-    <!-- Gaussian distribution sigma parameter -->
-    <param name="translation_noise" value="0.0" type="double"/>    <!-- odometry translation noise sigma -->
-    <param name="rotation_noise" value="0.0" type="double"/>      <!-- odometry rotation noise sigma -->
-    <param name="trans_vel_noise" value="0.0" type="double"/>     <!-- odometry translation velocity noise sigma -->
-    <param name="rot_vel_noise" value="0.0" type="double"/>        <!-- odometry rotation velocity noise sigma -->
-
     <!-- other settings -->
-    <param name="map_name" value="hfps4" type="string"/>         <!-- map to open -->
+    <param name="map_name" value="standard4" type="string"/>         <!-- map to open -->
     <param name="bag_name" value="hfps0" type="string"/>             <!-- saved rosbag name -->
     <param name="scan_topic" value="scan" type="string"/>             <!-- topic name of scan -->
-    <param name="odom_topic" value="odom" type="string"/>             <!-- topic name of odom -->
-    <param name="imu_topic" value="imu" type="string"/>             <!-- topic name of imu -->
     <param name="skip_selection" value="false" type="bool"/>        <!-- fixed initial position -->
     <param name="direct_pub" value="true" type="bool"/>             <!-- publish ros message directly -->
-    <param name="imu_plot" value="false" type="bool"/>              <!-- save imu output to file -->
   </node>
 </launch>
