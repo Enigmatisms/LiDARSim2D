@@ -166,6 +166,7 @@ install(DIRECTORY launch/
 )
 
 if (COMPILE_CUDA)
+  enable_language(CUDA)
   cuda_add_executable(cuda_test
     apps/cudaTest.cu
     src/utils/consts.cc
@@ -174,10 +175,25 @@ if (COMPILE_CUDA)
     src/cuda/cuda_funcs.cu
     src/cuda/cuda_pf.cu
   )
-  enable_language(CUDA)
   set_property(TARGET cuda_test PROPERTY CXX_STANDARD 14)
 
   target_link_libraries(cuda_test
+    ${OpenCV_LIBS}
+    ${Boost_LIBRARIES}
+    ${catkin_LIBRARIES}
+  )
+
+  cuda_add_executable(shadow_cast
+    apps/casting_test.cu
+    src/utils/consts.cc
+    src/utils/mapEdit.cc
+    src/utils/keyCtrl.cc
+    src/cuda/cast_kernel.cu
+    src/cuda/shadow_cast.cu
+  )
+  set_property(TARGET shadow_cast PROPERTY CXX_STANDARD 14)
+
+  target_link_libraries(shadow_cast
     ${OpenCV_LIBS}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}

@@ -1,6 +1,5 @@
 #include <numeric>
 #include <opencv2/imgproc.hpp>
-#include <gnuplot-iostream.h>
 #include <cuda_profiler_api.h>
 #include "utils/scanUtils.hpp"
 #include "utils/consts.h"
@@ -136,7 +135,6 @@ __host__ void CudaPF::intialize(const std::vector<std::vector<cv::Point>>& obsta
     // 分配4的整数个字节 才能保证初始float数组的完整性
 }
 
-Gnuplot gp1;
 void CudaPF::filtering(const std::vector<std::vector<cv::Point>>& obstacles, Eigen::Vector3d act_obs, cv::Mat& src) {
     TicToc timer;
     timer.tic();

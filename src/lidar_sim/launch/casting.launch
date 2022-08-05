@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- <node pkg="lidar_sim" type="cuda_test" name="cuda_test" output="screen" launch-prefix="nvprof -f -print-gpu-trace -o /home/sentinel/prof2.nvvp"> -->
+  <node pkg="lidar_sim" type="shadow_cast" name="shadow_cast" output="screen">
+    <param name="map_name" value="standard5" type="string"/>
+    <param name="point_num" value="1280" type="int"/>
+    <param name="trans_vel" value="5" type="double"/>
+    <param name="rot_vel" value="2" type="double"/>
+    <param name="angle_min" value="-1.5708" type="double"/>            <!-- LiDAR minimal angle -->
+    <param name="angle_max" value="1.5708" type="double"/>             <!-- LiDAR maximal angle -->
+    <param name="angle_incre" value="0.0087266" type="double"/>        <!-- LiDAR angle increment -->
+    <param name="resquire_no_init_pos" value="false" type="bool"/>
+  </node>
+</launch>

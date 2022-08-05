@@ -2,10 +2,18 @@
     "python.linting.pylintArgs": ["--load-plugins", "pylint_django"],
     "python.pythonPath": "/usr/bin/python3.6",
     "[cpp]": {
-        "editor.quickSuggestions": true
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        }
     },
     "[c]": {
-        "editor.quickSuggestions": true
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        }
     },
     "C_Cpp.default.includePath": [
         "${OpenCV_INCLUDE_DIRS}",
@@ -101,7 +109,14 @@
         "bit": "cpp",
         "__nullptr": "cpp",
         "__locale": "cpp",
-        "ios": "cpp"
+        "ios": "cpp",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "__config": "cpp",
+        "queue": "cpp",
+        "stack": "cpp"
     },
     "git.ignoreLimitWarning": true,
     "python.autoComplete.extraPaths": [
